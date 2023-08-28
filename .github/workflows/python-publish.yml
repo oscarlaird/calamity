@@ -35,6 +35,15 @@ jobs:
         git add pyproject.toml
         git commit -m "Bump version using poetry"
         git push
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pyproject.toml
+        git commit -m "Bump version using poetry"
+        git push origin ${{ github.ref }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Build package
       run: poetry build
     - name: Publish package
