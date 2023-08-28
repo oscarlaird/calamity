@@ -6,14 +6,10 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Upload Python Package
+name: Bump version and Upload Python Package
 
 on:
-  release:
-    types: [published]
-
-permissions:
-  contents: read
+  push:
 
 jobs:
   deploy:
@@ -21,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v2  # Use v2 for the checkout action
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v2  # Use v2 for the setup-python action
       with:
         python-version: '3.x'
     - name: Install dependencies
