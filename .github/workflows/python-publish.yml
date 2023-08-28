@@ -6,14 +6,10 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Upload Python Package
+name: Bump version and Upload Python Package
 
 on:
-  release:
-    types: [published]
-
-permissions:
-  contents: read
+  push:
 
 jobs:
   deploy:
@@ -21,15 +17,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v2  # Use v2 for the checkout action
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v2  # Use v2 for the setup-python action
       with:
         python-version: '3.x'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install poetry
+    - name: Bump version
+      run: poetry version patch
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pyproject.toml
+        git commit -m "Bump version using poetry"
+        git push
     - name: Build package
       run: poetry build
     - name: Publish package
