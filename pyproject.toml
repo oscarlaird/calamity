@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "calamity"
+version = "0.1.0"
+description = ""
+authors = ["Oscar Laird <olaird25@gmail.com>"]
+readme = "README.md"
+packages = [
+  { include = "calamity" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+sqlalchemy = "^2.0.20"
+questionary = "^2.0.0"
+fire = "^0.5.0"
+getch = "^1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
