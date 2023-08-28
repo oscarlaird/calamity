@@ -7,7 +7,8 @@ Calamity is a terminal-based calendar focused on fast navigation, fast data-entr
 
 Install Calamity via pip:
 ```
-pip install calamity_calendar
+>>> pip install calamity_calendar
+>>> calamity
 ```
 
 Your calendar is stored in `~/.local/share/calamity/events.db`.
