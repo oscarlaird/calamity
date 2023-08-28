@@ -21,4 +21,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-calamity = "calamity_runner:main"
+calamity = "calamity_calendar.calamity_runner:main"
