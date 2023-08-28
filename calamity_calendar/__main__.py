@@ -3,8 +3,8 @@ import time
 
 from sqlalchemy import text
 
-from calamity import display, database, modify, colors, help
-from calamity.getch import getch
+from calamity_calendar import display, database, modify, colors, help
+from calamity_calendar.getch import getch
 
 BACKSPACE = '\x7f'
 DELETE = '\x1b[3~'

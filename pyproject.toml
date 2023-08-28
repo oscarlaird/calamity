@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "calamity"
+name = "calamity_calendar"
 version = "0.1.0"
 description = ""
 authors = ["Oscar Laird <olaird25@gmail.com>"]
 readme = "README.md"
 packages = [
-  { include = "calamity" }
+  { include = "calamity_calendar" }
 ]
 
 [tool.poetry.dependencies]

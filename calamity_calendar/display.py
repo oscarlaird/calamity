@@ -4,7 +4,7 @@ import datetime
 import shutil
 import signal
 
-from calamity import colors, database
+from calamity_calendar import colors, database
 
 TIMETABLE_START = 7 * 4  # start at 7am
 TIMETABLE_END = 19 * 4  # end at 7pm

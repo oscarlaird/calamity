@@ -4,9 +4,9 @@ import time
 import questionary
 import datetime
 
-from calamity import colors
-from calamity.database import Session, Event
-from calamity.validators import DateValidator, CodeValidator, TimeValidator, RepetitionValidator
+from calamity_calendar import colors
+from calamity_calendar.database import Session, Event
+from calamity_calendar.validators import DateValidator, CodeValidator, TimeValidator, RepetitionValidator
 
 
 def delete_event(event, session, param=None):
