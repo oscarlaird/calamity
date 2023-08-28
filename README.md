@@ -1,5 +1,6 @@
 # Calamity
 
+Calamity is a terminal-based calendar focused on fast navigation, fast data-entry, and vim-like bindings.
 ![Home Image](home.png)
 
 ## Installation
@@ -8,6 +9,8 @@ Install Calamity via pip:
 ```
 pip install calamity
 ```
+
+Your calendar is stored in `~/.local/share/calamity/events.db`.
 
 ## Overview
 
@@ -21,26 +24,32 @@ Events are selected using a coordinate system. Days are chosen with capital lett
 
 Events can also be repeated daily, weekly, or monthly. Repeated events generally share characteristics like description, color, and time.
 
-## Commands
-
-### Selection & Navigation
-- **Day Selection**: `A-Z`
-- **Event Selection**: `1-9`
-- **Move Down**: `j`
-- **Move Up**: `k`
-- **Move Right**: `l`
-- **Move Left**: `h`
-- **Previous Month**: `<`
-- **Next Month**: `>`
-- **Previous Week**: `b`
-- **Next Week**: `w`
+## Usage
 
 ### Event Creation
 - **Appointment**: `a`
 - **Task**: `t`
 - **Chore**: `c`
 
-### Event Editing
+### Selecting a Day
+- **Choose by letter**: `A-Z`
+- **Move Down**: `j`
+- **Move Up**: `k`
+- **Previous Month**: `<`
+- **Next Month**: `>`
+- **Previous Week**: `b`
+- **Next Week**: `w`
+- **Jump to today**: `gg`
+
+### Selecting an Event
+- **Choose by number**: `1-9`
+- **Move Right**: `l`
+- **Move Left**: `h`
+- **Cycle through Chores**: `TAB`
+- **Cycle Appointments**: `SPC`
+- **Cycle Tasks**: `RET`
+
+### Editing an Event
 - **Move Date**: `m`
 - **Edit Description**: `d`
 - **Edit Time (only for appointments)**: `i`
@@ -49,20 +58,14 @@ Events can also be repeated daily, weekly, or monthly. Repeated events generally
 - **Cycle Color Backwards**: `,`
 - **Delete**: `x`
 - **Set Repetition**: `r`
-- **Separate Event from a Repetition**: `s`
+- **Separate Event from its Repetition Group**: `s`
+- **Duplicate Event**: `y`
 
 ### Miscellaneous Commands
 - **Help**: `?`
 - **Undo**: `u`
 - **Redo**: `CTRL-R`
-- **Cycle through Events**: `TAB`
-- **Cycle Appointments**: `SPC`
-- **Cycle Tasks**: `RET`
-- **First Month**: `gg`
-- **Next Month**: `SPC`
-- **Previous Month**: `BAC`
+- **Scroll Position to Top/Middle/Bottom**: `zt`, `zz`, `zb`
 - **Quit**: `ESC` or `q`
-- **Duplicate Event**: `y`
-- **Detach from Recurrence**: `s`
 
 Enjoy scheduling with Calamity!
