@@ -1,5 +1,6 @@
 import sqlalchemy
 import datetime
+import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -8,16 +9,20 @@ from sqlalchemy.orm import sessionmaker
 import logging
 
 # delete the log file
+"""
 open('sqlalchemy.log', 'w').close()
 logger = logging.getLogger('sqlalchemy')
 logger.setLevel(logging.INFO)
 #redirect to sqlachemy.log
 logger.addHandler(logging.FileHandler('sqlalchemy.log', mode='w'))
+"""
 
 # logging.basicConfig(filename='sqlalchemy.log', level=logging.INFO)
 
 # Create the events table
-engine = create_engine('sqlite:///events.db')
+# the database file will live in ~/.local/share/calamity/events.db
+db_path = os.path.join(os.path.expanduser('~'), '.local', 'share', 'calamity', 'events.db')
+engine = create_engine(f'sqlite:///{db_path}')
 
 # Create a session
 Session = sessionmaker(bind=engine)
