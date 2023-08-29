@@ -1,5 +1,6 @@
 # This is a sample Python script.
 import time
+import os
 
 import questionary
 import datetime
@@ -8,6 +9,9 @@ from calamity_calendar import colors
 from calamity_calendar.database import Session, Event
 from calamity_calendar.validators import DateValidator, CodeValidator, TimeValidator, RepetitionValidator
 
+def random_group_id():
+    # return a random 4 byte integer
+    return int.from_bytes(os.urandom(4), byteorder='big')
 
 def delete_event(event, session, param=None):
     # delete event
@@ -69,7 +73,7 @@ def edit_code(event, session, param=None):
 
 
 def repeat_event(event, session, param=None):
-    event.recurrence_parent = event.recurrence_parent or event.id  # if this is the first time, set the parent to self
+    event.recurrence_parent = event.recurrence_parent or random_group_id()  # if no group id, make one
     period, n = param if param is not None else questionary.text("How many times (period+repetitions)?",
                                  validate=RepetitionValidator,
                                  default="7+1").ask().split('+')
@@ -89,7 +93,7 @@ def duplicate_event(event, session, param=None):
     return None
 
 def detach_event(event, session, param=None):
-    event.recurrence_parent = None
+    event.recurrence_parent = random_group_id()
 
 
 def edit_time(event, session, param=None):
