@@ -15,9 +15,12 @@ def random_group_id():
     # return a random 4 byte integer
     return int.from_bytes(os.urandom(4), byteorder='big')
 
+def has_repetition(event, session):
+    return event.recurrence_parent is not None and (session.query(Event).filter(Event.recurrence_parent == event.recurrence_parent).filter(Event.id != event.id).first()) is not None
+
 def delete_event(event, session, param=None):
     # delete event
-    if (event.recurrence_parent is not None) and (session.query(Event).filter(Event.recurrence_parent == event.recurrence_parent).filter(Event.id != event.id).first()) is not None:
+    if has_repetition(event, session):
         if param if param is not None else questionary.confirm("Delete all repetitions?", default=False).ask():
             # delete all recurrence children
             session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).delete()
@@ -38,24 +41,21 @@ def edit_date(event, session, param=None):
         event.date = param
     return event.date
 
-def postpone_day(event, session, param=None):
-    event.date += 1
 
-def postpone_week(event, session, param=None):
-    event.date += 7
+def postpone(event, session, param=1):
+    event.date += param
+    # shift siblings
+    if event.recurrence_parent is not None:
+        session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).filter(Event.id != event.id).update({Event.date: Event.date + param})
+    return param
 
-def postpone_month(event, session, param=None):
-    event.date += 30
 
-def prepone_day(event, session, param=None):
-    event.date -= 1
-
-def prepone_week(event, session, param=None):
-    event.date -= 7
-
-def prepone_month(event, session, param=None):
-    event.date -= 30
-
+postpone_day = lambda event, session, param=None: postpone(event, session, param=1)
+postpone_week = lambda event, session, param=None: postpone(event, session, param=7)
+postpone_month = lambda event, session, param=None: postpone(event, session, param=30)
+prepone_day = lambda event, session, param=None: postpone(event, session, param=-1)
+prepone_week = lambda event, session, param=None: postpone(event, session, param=-7)
+prepone_month = lambda event, session, param=None: postpone(event, session, param=-30)
 
 
 def edit_description(event, session, param=None):
@@ -85,8 +85,8 @@ def cycle_color_backwards(event, session, param=None):
 def edit_code(event, session, param=None):
     if not event.type == "task":
         return
-    event.code = param if param is not None else questionary.autocomplete("Code:", validate=CodeValidator,
-                                          choices=list_codes(session), default=event.code).ask()
+    event.code = param if param is not None else questionary.text("Code:", validate=CodeValidator,
+                                          default=event.code).ask()
     # make siblings have same code
     if event.recurrence_parent is not None:
         session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update({Event.code: event.code})

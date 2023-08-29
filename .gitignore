@@ -3,3 +3,10 @@
 calamity.iml
 misc.xml
 
+# pyc files
+*.pyc
+__pycache__/
+
+# poetry
+poetry.lock
+calamity-calendar-_etf-Of3-py3.11

@@ -1,5 +1,5 @@
 import datetime
-import time
+import shutil
 
 from sqlalchemy import text
 import questionary
@@ -7,11 +7,14 @@ import questionary
 from calamity_calendar import display, database, modify, colors, help
 from calamity_calendar.getch import getch
 
+
 class Calamity:
 
     def __init__(self):
         self.session = None
-        self.appointments = []; self.tasks = []; self.chores = [];
+        self.appointments = []
+        self.tasks = []
+        self.chores = []
         self.events = []
         self.today = datetime.date.today().toordinal()
         self._chosen_date = self.today
@@ -28,6 +31,7 @@ class Calamity:
     @property
     def chosen_event(self):
         return self._chosen_event
+
     @chosen_event.setter
     def chosen_event(self, event):
         self._chosen_event = event
@@ -37,6 +41,7 @@ class Calamity:
     @property
     def chosen_date(self):
         return self._chosen_date
+
     @chosen_date.setter
     def chosen_date(self, date):
         if self.chosen_event and self.chosen_event.date != date:
@@ -57,14 +62,14 @@ class Calamity:
             elif old_type == 'task':
                 self.task_idx = old_task_idx
             elif old_type == 'appointment':
+                self.chosen_event = None
                 for event in self.appointments:
-                    if (old_appt_start < event.end_time <= old_appt_end) or (old_appt_start <= event.start_time < old_appt_end):
+                    if (old_appt_start < event.end_time <= old_appt_end) or (
+                            old_appt_start <= event.start_time < old_appt_end):
                         self.chosen_event = event
                         break
-                self.chosen_event = None
             else:
                 self.chosen_event = None
-
 
     @property
     def chosen_event_idx(self):
@@ -75,6 +80,7 @@ class Calamity:
             if event.id == self.chosen_event.id:
                 return i
         raise RuntimeError('Chosen event not in events')
+
     @chosen_event_idx.setter
     def chosen_event_idx(self, idx):
         self.chosen_event = self.events[idx] if (idx is not None and 0 <= idx < len(self.events)) else None
@@ -84,30 +90,30 @@ class Calamity:
         if not self.chosen_event or self.chosen_event.type != 'task':
             return None
         return self.chosen_event_idx - len(self.appointments)
+
     @task_idx.setter
     def task_idx(self, idx):
         self.chosen_event_idx = len(self.appointments) + idx if idx < len(self.tasks) else None
-
 
     @property
     def appointment_idx(self):
         if not self.chosen_event or self.chosen_event.type != 'appointment':
             return None
         return self.chosen_event_idx
+
     @appointment_idx.setter
     def appointment_idx(self, idx):
         self.chosen_event_idx = idx if idx < len(self.appointments) else None
-
 
     @property
     def chore_idx(self):
         if not self.chosen_event or self.chosen_event.type != 'chore':
             return None
         return self.chosen_event_idx - len(self.appointments) - len(self.tasks)
+
     @chore_idx.setter
     def chore_idx(self, idx):
         self.chosen_event_idx = len(self.appointments) + len(self.tasks) + idx if idx < len(self.chores) else None
-
 
     def idx_of(self, event):
         for i, e in enumerate(self.events):
@@ -115,9 +121,9 @@ class Calamity:
                 return i
         raise RuntimeError('Event not in events')
 
-
     COMMANDS = {
         'x': (modify.delete_event, "Delete"),
+        'd': (modify.delete_event, "Delete"),
         'r': (modify.repeat_event, "Repeat"),
         'y': (modify.duplicate_event, "Duplicate"),
         's': (modify.detach_event, "Separate / Detach"),
@@ -129,25 +135,24 @@ class Calamity:
         'es': (modify.edit_start_time, "Edit Start (appt)"),
         'ee': (modify.edit_end_time, "Edit End (appt)"),
         ';': (modify.cycle_color, "Cycle Color"),
-        ',': (modify.cycle_color_backwards, "Cycle Color Backwords"),
-        # '\x1b[A': (modify.prepone_one, "Prepone one day"),
-        # '\x1b[B': (modify.postpone_one, "Postpone one day"),
-        # '\x1b[C': (modify.quarter_fore, "Advance time by 15 minutes"),
-        # '\x1b[D': (modify.quarter_back, "Move back time by 15 minutes"),
-        '+d' : (modify.postpone_day, "Postpone one day/week/month"),
+        ',': (modify.cycle_color_backwards, "Cycle Color Backwards"),
+        '+d': (modify.postpone_day, "Postpone one day/week/month"),
         '+w': (modify.postpone_week, "Postpone one day/week/month"),
         '+m': (modify.postpone_month, "Postpone one day/week/month"),
-        '=d' : (modify.postpone_day, "Postpone one day/week/month"),
+        '=d': (modify.postpone_day, "Postpone one day/week/month"),
         '=w': (modify.postpone_week, "Postpone one day/week/month"),
         '=m': (modify.postpone_month, "Postpone one day/week/month"),
-        '-d': (modify.prepone_day,   "Prepone one day/week/month"),
-        '-w': (modify.prepone_week,  "Prepone one day/week/month"),
+        '-d': (modify.prepone_day, "Prepone one day/week/month"),
+        '-w': (modify.prepone_week, "Prepone one day/week/month"),
         '-m': (modify.prepone_month, "Prepone one day/week/month"),
         'm': (modify.edit_date, "Move (set date)"),
     }
     NEW_TYPES = ('a', 't', 'c')
-    MOTIONS = ('j', 'k', 'h', 'l', 'w', 'b', '<', '>', '\t', ' ', '\n', '\r', 'n','p','0','$','gg','zz','zb','zt','\x1b[A','\x1b[B','\x1b[C','\x1b[D')
-    MISC_COMMANDS = ('?', 'u', '\x12', '\x1b\x1b', 'q', '\x03', None, '~')  # help, undo, redo, quit, ctrl-c INTRANSITIVE
+    MOTIONS = (
+        'j', 'k', 'h', 'l', 'w', 'b', '<', '>', '\t', ' ', '\n', '\r', 'n', 'p', '0', '$', 'gg', 'zz', 'zb', 'zt',
+        '\x1b[A', '\x1b[B', '\x1b[C', '\x1b[D')
+    MISC_COMMANDS = (
+        '?', 'u', '\x12', '\x1b\x1b', 'q', '\x03', None, '~', 'v', 'o')  # help, undo, redo, quit, ctrl-c INTRANSITIVE
 
     def vim_getch(self):  # allow for g- z- etc. prefix commands
         c = getch(watch_resize=True)
@@ -182,7 +187,7 @@ class Calamity:
             if a.isdigit():
                 b = getch()
                 if b.isdigit():
-                    new_day = 10*int(a) + int(b)
+                    new_day = 10 * int(a) + int(b)
                     for date in range(self.from_date, self.from_date + display.NUM_DAYS):
                         if datetime.date.fromordinal(date).day == new_day:
                             new_date = date
@@ -216,7 +221,6 @@ class Calamity:
                 else:
                     pass
 
-
     def display(self):
         # DISPLAY
         print(colors.CLEAR_SCREEN + colors.CURSOR_OFF + colors.WRAP_OFF, end='')
@@ -236,14 +240,14 @@ class Calamity:
         elif c == 'u':
             if self.undo_stack:
                 self.session.execute(text(f'ROLLBACK TO SP_{len(self.undo_stack) - 1}'))  # rollback to the savepoint
-                self.session.expire_all()  # NECESSARY: invalidates all cached objects, must reload them from the database
+                self.session.expire_all()  # invalidates all cached objects, must reload them from the database
                 self.chosen_date, idx, _, _ = self.undo_stack[-1]  # copy coordinates from undo stack
                 self.chosen_event_idx = idx  # make sure we have the correct date before setting chosen_event_idx
                 self.redo_stack.append(self.undo_stack.pop())
         elif c == '\x12':  # CTRL-R redo
             if self.redo_stack:
                 self.chosen_date, chosen_event_idx, self.chosen_action, self.param = self.redo_stack[-1]  # replay
-                self.chosen_event_idx = chosen_event_idx  # make sure we have the correct date before setting chosen_event_idx
+                self.chosen_event_idx = chosen_event_idx  # refresh chosen_date
         elif c == '?':
             # open help.txt
             print(colors.ALT_SCREEN + help.help)
@@ -257,6 +261,13 @@ class Calamity:
             exit()
         elif c == '~':
             display.toggle_military()
+        elif c == 'v':
+            # make a backup of the database
+            target = questionary.path(message="Backup database location: ", only_directories=True).ask()
+            shutil.copy(database.DB_PATH, target)
+        elif c == 'o':
+            # OPTIONS / config
+            pass
 
 
     def do_command(self, c):
@@ -281,7 +292,6 @@ class Calamity:
             raise ValueError(f"Unknown action {self.chosen_action}")
         triple[3] = self.param
         self.make_savepoint(triple)
-
 
     def make_savepoint(self, triple):
         # SAVEPOINT
@@ -321,34 +331,26 @@ class Calamity:
             self.chosen_date += 7
         elif c == 'b':
             self.chosen_date -= 7
-        elif c == '<':
-            old_date = datetime.date.fromordinal(self.chosen_date)  # set new_date to the previous month
-            new_date = old_date.replace(year=old_date.year - (old_date.month == 1), month=(old_date.month - 2) % 12 + 1,
-                                        day=1)  # get the number of days in this month n_days (e.g. 28 for Feb)
+        elif c == '<' or c == '>':
+            old = datetime.date.fromordinal(self.chosen_date)  # set new_date to the previous month
+            if c == '<':
+                new_date = old.replace(year=old.year - (old.month == 1), month=(old.month - 2) % 12 + 1,
+                                       day=1)  # get the number of days in this month n_days (e.g. 28 for Feb)
+            elif c == '>':
+                new_date = old.replace(year=old.year + (old.month == 12), month=old.month % 12 + 1, day=1)
             n_days = (new_date.replace(year=new_date.year + (new_date.month == 12),
-                                       month=(new_date.month) % 12 + 1) - new_date).days
+                                       month=new_date.month % 12 + 1) - new_date).days
             new_date = new_date.replace(
-                day=min(old_date.day, n_days))  # try to keep the same day of the month if possible
-            difference = old_date.toordinal() - new_date.toordinal()
+                day=min(old.day, n_days))  # try to keep the same day of the month if possible
+            difference = old.toordinal() - new_date.toordinal()
             self.chosen_date -= difference
             self.from_date -= difference
-        elif c == '>':
-            old_date = datetime.date.fromordinal(self.chosen_date)
-            new_date = old_date.replace(year=old_date.year + (old_date.month == 12), month=(old_date.month) % 12 + 1,
-                                        day=1)
-            n_days = (new_date.replace(year=new_date.year + (new_date.month == 12),
-                                       month=(new_date.month) % 12 + 1) - new_date).days
-            new_date = new_date.replace(
-                day=min(old_date.day, n_days))  # try to keep the same day of the month if possible
-            difference = new_date.toordinal() - old_date.toordinal()
-            self.chosen_date += difference
-            self.from_date += difference
-        elif c == '\t': # cycle thru chores
+        elif c == '\t':  # cycle through chores
             if self.chore_idx is not None:
                 self.chore_idx = (self.chore_idx + 1) % len(self.chores)
             elif self.chores:
                 self.chore_idx = 0
-        elif c == '\n' or c == '\r': # cycle thru tasks
+        elif c == '\n' or c == '\r':  # cycle thru tasks
             if self.task_idx is not None:
                 getch()
                 self.task_idx = (self.task_idx + 1) % len(self.tasks)
@@ -367,7 +369,8 @@ class Calamity:
                 # query the database for the next occurrence of the event (having a later date)
                 filter_order = database.Event.date > self.chosen_event.date if c == 'n' else database.Event.date < self.chosen_event.date
                 order_by = database.Event.date if c == 'n' else database.Event.date.desc()
-                next_event = self.session.query(database.Event).filter_by(recurrence_parent=self.chosen_event.recurrence_parent).filter(
+                next_event = self.session.query(database.Event).filter_by(
+                    recurrence_parent=self.chosen_event.recurrence_parent).filter(
                     filter_order).order_by(order_by).first()
                 self.chosen_event = next_event or self.chosen_event
         elif c == 'gg':
@@ -397,8 +400,10 @@ class Calamity:
             if display.TIMETABLE_START_HOUR > 0:
                 display.change_start_time(display.TIMETABLE_START_HOUR - 1)
 
+
 def run():
     Calamity().main_loop()
 
+
 if __name__ == '__main__':
-    run()0
+    run()

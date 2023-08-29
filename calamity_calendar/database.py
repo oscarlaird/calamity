@@ -21,8 +21,8 @@ logger.addHandler(logging.FileHandler('sqlalchemy.log', mode='w'))
 
 # Create the events table
 # the database file will live in ~/.local/share/calamity/events.db
-db_path = os.path.join(os.path.expanduser('~'), '.local', 'share', 'calamity', 'events.db')
-engine = create_engine(f'sqlite:///{db_path}')
+DB_PATH = os.path.join(os.path.expanduser('~'), '.local', 'share', 'calamity', 'events.db')
+engine = create_engine(f'sqlite:///{DB_PATH}')
 
 # Create a session
 Session = sessionmaker(bind=engine)
