@@ -1,3 +1,7 @@
 [calamity-_etf-Of3]
 minor = "3.11"
 patch = "3.11.3"
+
+[calamity-calendar-_etf-Of3]
+minor = "3.11"
+patch = "3.11.3"

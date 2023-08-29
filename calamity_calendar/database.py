@@ -62,12 +62,18 @@ class Event(Base):
     def to_dict(self):
         return {key: getattr(self, key) for key in self.__table__.columns.keys()}
 
-def fetch_days_events(date, session):
-    tasks = session.query(Event).filter_by(date=date, type="task").all()
-    appointments = session.query(Event).filter_by(date=date, type="appointment").order_by(
-        Event.start_time).all()
-    chores = session.query(Event).filter_by(date=date, type="chore").all()
-    return tasks, appointments, chores
+def fetch_events(date, session):
+    return fetch_appointments(date, session), fetch_tasks(date, session), fetch_chores(date, session)
+
+def fetch_appointments(date, session):
+    return session.query(Event).filter_by(date=date, type="appointment").order_by(Event.start_time).all()
+
+def fetch_tasks(date, session):
+    return session.query(Event).filter_by(date=date, type="task").all()
+
+def fetch_chores(date, session):
+    return session.query(Event).filter_by(date=date, type="chore").all()
+
 
 
 # Create the table

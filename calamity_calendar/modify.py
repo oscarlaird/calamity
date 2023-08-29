@@ -5,9 +5,11 @@ import os
 import questionary
 import datetime
 
+
 from calamity_calendar import colors
 from calamity_calendar.database import Session, Event
 from calamity_calendar.validators import DateValidator, CodeValidator, TimeValidator, RepetitionValidator
+from calamity_calendar.getch import getch
 
 def random_group_id():
     # return a random 4 byte integer
@@ -15,7 +17,7 @@ def random_group_id():
 
 def delete_event(event, session, param=None):
     # delete event
-    if event.recurrence_parent is not None:
+    if (event.recurrence_parent is not None) and (session.query(Event).filter(Event.recurrence_parent == event.recurrence_parent).filter(Event.id != event.id).first()) is not None:
         if param if param is not None else questionary.confirm("Delete all repetitions?", default=False).ask():
             # delete all recurrence children
             session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).delete()
@@ -27,7 +29,7 @@ def delete_event(event, session, param=None):
         return None
 
 
-def move_event(event, session, param=None):
+def edit_date(event, session, param=None):
     if param is None:
         old_date = datetime.date.fromordinal(event.date).strftime("%Y-%m-%d")
         date = questionary.text(message="Date (YYYY-MM-DD):", default=old_date, validate=DateValidator).ask()
@@ -35,6 +37,25 @@ def move_event(event, session, param=None):
     else:
         event.date = param
     return event.date
+
+def postpone_day(event, session, param=None):
+    event.date += 1
+
+def postpone_week(event, session, param=None):
+    event.date += 7
+
+def postpone_month(event, session, param=None):
+    event.date += 30
+
+def prepone_day(event, session, param=None):
+    event.date -= 1
+
+def prepone_week(event, session, param=None):
+    event.date -= 7
+
+def prepone_month(event, session, param=None):
+    event.date -= 30
+
 
 
 def edit_description(event, session, param=None):
@@ -118,6 +139,11 @@ def edit_time(event, session, param=None):
             {Event.start_time: event.start_time, Event.end_time: event.end_time})
     return (event.start_time, event.end_time)
 
+def edit_start_time(event, session, param=None):
+    pass
+
+def edit_end_time(event, session, param=None):
+    pass
 
 def add_event(event, session, param=None):
     if param is None:

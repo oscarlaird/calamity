@@ -1,6 +1,7 @@
 # Calamity
 
-Calamity is a terminal-based calendar focused on fast navigation, fast data-entry, and vim-like bindings.
+## Calamity is a terminal-based calendar focused on fast navigation, fast data-entry, and vim-like bindings.
+
 ![Home Image](home.png)
 
 ## Installation
@@ -68,7 +69,7 @@ Events can also be repeated daily, weekly, or monthly. Repeated events generally
 - **Help**: `?`
 - **Undo**: `u`
 - **Redo**: `CTRL-R`
-- **Scroll Position to Top/Middle/Bottom**: `zt`, `zz`, `zb`
+- **Scroll Selected Day to Top/Middle/Bottom of View**: `zt`, `zz`, `zb`
 - **Quit**: `ESC` or `q`
 
 Enjoy scheduling with Calamity!
