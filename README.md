@@ -49,6 +49,8 @@ Events can also be repeated daily, weekly, or monthly. Repeated events generally
 - **Cycle through Chores**: `TAB`
 - **Cycle Appointments**: `SPC`
 - **Cycle Tasks**: `RET`
+- **Next Occurrence of Repeated Event**: `n`
+- **Previous Occurrence of Repeated Event**: `p`
 
 ### Editing an Event
 - **Move Date**: `m`

@@ -31,12 +31,12 @@ COMMANDS = {
 NEW_TYPES = {'a': ('appointment', "New Appointment"),
              't': ('task', "New Task"),
              'c': ('chore', "New Chore")}
-MOTIONS = ('j', DOWN, 'k', UP, 'h', LEFT, 'l', RIGHT, 'w', 'b', '<', '>', '\t', ' ', '\n', '\r', 'g', 'z')
+MOTIONS = ('j', DOWN, 'k', UP, 'h', LEFT, 'l', RIGHT, 'w', 'b', '<', '>', '\t', ' ', '\n', '\r', 'g', 'z','n','p')
 
 TODAY = datetime.date.today().toordinal()
 from_date = TODAY
 
-def get_index_of_event_from_id(event_id, session):
+def get_index_of_event_from_id(chosen_date, event_id, session):
     tasks, appointments, chores = database.fetch_days_events(chosen_date, session=session)
     events = appointments + tasks + chores
     for i, event in enumerate(events):
@@ -185,17 +185,31 @@ try:
                     else:
                         chosen_event_idx += 1
                         chosen_event_idx %= len(appointments)
+                elif c=='n' or c=='p':  # next occurrence of repeated event
+                    if chosen_event_idx is None or chosen_event_idx >= len(events):
+                        pass
+                    elif (event := events[chosen_event_idx]).recurrence_parent is None:
+                        pass
+                    else:
+                        # query the database for the next occurrence of the event (having a later date)
+                        filter_order = database.Event.date > event.date if c=='n' else database.Event.date < event.date
+                        order_by = database.Event.date if c=='n' else database.Event.date.desc()
+                        next_event = session.query(database.Event).filter_by(recurrence_parent=event.recurrence_parent).filter(filter_order).order_by(order_by).first()
+                        if next_event is not None:
+                            chosen_date = next_event.date
+                            chosen_event_idx = get_index_of_event_from_id(chosen_date, next_event.id, session)
+                            if chosen_date < from_date:
+                                from_date = chosen_date
+                            elif from_date + display.NUM_DAYS <= chosen_date:
+                                from_date = chosen_date - display.NUM_DAYS + 1
                 elif c=='g':
                     submotion = getch()
                     if submotion == 'g':
+                        chosen_date = TODAY
                         if TODAY < from_date:
                             from_date = TODAY
-                            chosen_date = TODAY
                         elif from_date + display.NUM_DAYS <= TODAY:
                             from_date = TODAY - display.NUM_DAYS + 1
-                            chosen_date = TODAY
-                        else:
-                            chosen_date = TODAY
                         chosen_event_idx = None
                     else:
                         pass
@@ -229,7 +243,7 @@ try:
                 session.add(new_event)
                 session.flush()  # get the id and default values back from the database
                 triple[3] = modify.add_event(new_event, session, param=param)
-                chosen_event_idx = get_index_of_event_from_id(new_event.id, session)
+                chosen_event_idx = get_index_of_event_from_id(chosen_date, new_event.id, session)
             elif chosen_action in COMMANDS:
                 assert chosen_event_idx is not None
                 # save the parameters of the command in case we need to redo
