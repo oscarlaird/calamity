@@ -51,7 +51,6 @@ class Calamity:
             self.from_date = self.chosen_date - display.NUM_DAYS + 1
         elif self.chosen_date < self.from_date:
             self.from_date = self.chosen_date
-        # TODO try to find the right chosen_event for j and k
         if self.chosen_event and self.chosen_event.date != date:
             if old_type == 'chore':
                 self.chore_idx = old_chore_idx
