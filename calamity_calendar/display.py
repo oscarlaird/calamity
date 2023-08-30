@@ -25,9 +25,9 @@ def refresh_term_size():
     TERM_WIDTH = shutil.get_terminal_size().columns
     MARGIN = ' ' * ((TERM_WIDTH - TABLE_WIDTH) // 2)
 
-def toggle_military():
+def set_military(use_military: bool):
     global MILITARY
-    MILITARY = not MILITARY
+    MILITARY = use_military
     change_start_time(TIMETABLE_START_HOUR)
 
 def change_start_time(hour):
@@ -128,8 +128,8 @@ def display_calendar(cal):
         if date.day == 1 or i == 0:
             print(MARGIN + timetable_header + colors.ANSI_BOLD + date.strftime("%B").center(9) + colors.ANSI_RESET)
         print(MARGIN + day_row(date_num, cal))
-    print('\n' * 3)
-    print(colors.UP_LINE * 3, end='')
+    print('\n' * 2)
+    print(colors.UP_LINE * 2, end='')
 
 def show_days_events(cal):
     prev_type = None

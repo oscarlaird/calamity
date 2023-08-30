@@ -1,5 +1,6 @@
 import datetime
 import shutil
+import os
 
 from sqlalchemy import text
 import questionary
@@ -12,6 +13,7 @@ class Calamity:
 
     def __init__(self):
         self.session = None
+        self.config = None
         self.appointments = []
         self.tasks = []
         self.chores = []
@@ -202,8 +204,11 @@ class Calamity:
     def main_loop(self):
         print('here')
         self.session = database.Session()
+        self.config = database.ConfigDict(self.session)
         self.session.execute(text(f'SAVEPOINT SP_0'))
         with self.session:
+            display.set_military(self.config['military_time'])
+            display.change_start_time(self.config['start_hour'])
             while True:
                 self.display()
                 c = self.vim_getch()
@@ -233,6 +238,7 @@ class Calamity:
 
         display.display_calendar(self)
         # print(self.undo_stack, self.redo_stack)
+        # print(repr(self.config))
 
     def do_misc_command(self, c):
         if c is None:  # terminal was resized
@@ -260,13 +266,16 @@ class Calamity:
             self.session.commit()
             exit()
         elif c == '~':
-            display.toggle_military()
+            self.config['military_time'] = not self.config['military_time']
+            display.set_military(self.config['military_time'])
         elif c == 'v':
             # make a backup of the database
-            target = questionary.path(message="Backup database location: ", only_directories=True).ask()
-            shutil.copy(database.DB_PATH, target)
+            self.config['backup_location'] = questionary.text(message="Backup database location: ", only_directories=True,
+                                                              default=self.config['backup_location']).ask()
+            shutil.copy(database.DB_PATH, os.path.expanduser(self.config['backup_location']))
         elif c == 'o':
             # OPTIONS / config
+            # military_time, timetable_start_hour, timezone, save_location, autosave,
             pass
 
 
@@ -394,11 +403,13 @@ class Calamity:
             if self.chosen_date < self.from_date:
                 self.chosen_date += 1
         elif c == '\x1b[C':  # ctrl-right
-            if display.TIMETABLE_START_HOUR < 12:
-                display.change_start_time(display.TIMETABLE_START_HOUR + 1)
+            if self.config['start_hour'] < 12:
+                self.config['start_hour'] += 1
+                display.change_start_time(self.config['start_hour'])
         elif c == '\x1b[D':
-            if display.TIMETABLE_START_HOUR > 0:
-                display.change_start_time(display.TIMETABLE_START_HOUR - 1)
+            if self.config['start_hour'] > 0:
+                self.config['start_hour'] -= 1
+                display.change_start_time(self.config['start_hour'])
 
 
 def run():

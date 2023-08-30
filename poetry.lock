@@ -117,6 +117,27 @@ files = [
 wcwidth = "*"
 
 [[package]]
+name = "pydevd"
+version = "2.9.6"
+description = "PyDev.Debugger (used in PyDev, PyCharm and VSCode Python)"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pydevd-2.9.6-cp310-cp310-macosx_11_0_x86_64.whl", hash = "sha256:85f761be2a0555ccfa61a5a8c4dc91b4940787c2b5251402a66c6bf89f00b9ef"},
+    {file = "pydevd-2.9.6-cp310-cp310-win_amd64.whl", hash = "sha256:d6b689beb5e8c7c2f3edf5a04763d3be9d560e2c1daab2781d89aaa44f5e3e05"},
+    {file = "pydevd-2.9.6-cp311-cp311-macosx_10_15_universal2.whl", hash = "sha256:301fe6652619c26109357ae790140d8ebfdbc0b03589a55a62c3a38328494279"},
+    {file = "pydevd-2.9.6-cp311-cp311-win_amd64.whl", hash = "sha256:00fcf8867a207c4c0bf4ef66c6f684875032a41aeaaaff2a2d52b1c731896204"},
+    {file = "pydevd-2.9.6-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:ed81a69543507d1dc2d72cddd24548d06bbbd99ce36fd6443b78aa1e2923c772"},
+    {file = "pydevd-2.9.6-cp37-cp37m-win_amd64.whl", hash = "sha256:d45f903b7063e21db3c797ac1a9915102c1ec759ca6d1eb6a4e957125c0e5b48"},
+    {file = "pydevd-2.9.6-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:4460a5187cae77fdad3a455909940b2d4be358990b15586b65bac6b5dd6735b5"},
+    {file = "pydevd-2.9.6-cp38-cp38-win_amd64.whl", hash = "sha256:3d16b76fa9f317b13e3e2de77fd2170ce878fef736f2cb88cd0b6a6596d00bc2"},
+    {file = "pydevd-2.9.6-cp39-cp39-macosx_11_0_x86_64.whl", hash = "sha256:0567bdc38873be55bafda127218dc6ae536088ff3c84c200a24257fc19dbb393"},
+    {file = "pydevd-2.9.6-cp39-cp39-win_amd64.whl", hash = "sha256:c0f28b625496c9daa71bca6f98f5b5f81a99696af8da8c18bbd5cc79f4d6a44e"},
+    {file = "pydevd-2.9.6.tar.gz", hash = "sha256:f97f7a30ef8fe59c06fe6cd8cd38d16f30a3071dc414412472c30b97594ab751"},
+]
+
+[[package]]
 name = "questionary"
 version = "2.0.0"
 description = "Python library to build pretty command line user prompts ⭐️"
@@ -264,4 +285,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "15bd23e712f13deef902dd9048aa4cef5bf7c1894ebd6ea61837e9a74a71ddca"
+content-hash = "b19bfefbde14ed4edd5eab226e20e7b0858b85871185ec7752357510847acbb9"

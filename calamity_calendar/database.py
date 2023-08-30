@@ -1,6 +1,7 @@
 import sqlalchemy
 import datetime
 import os
+import json
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -61,6 +62,45 @@ class Event(Base):
 
     def to_dict(self):
         return {key: getattr(self, key) for key in self.__table__.columns.keys()}
+
+
+class Config(Base):
+    __tablename__ = 'config'
+
+    key = sqlalchemy.Column(sqlalchemy.String, default="", primary_key=True)
+    value = sqlalchemy.Column(sqlalchemy.String, default="")
+    # keys: military_time, timezone, start_hour, backup_location
+
+
+class ConfigDict:
+
+    def __init__(self, session):
+        self.session = session
+        self._dict = {row.key: row for row in session.query(Config).all()}
+        self.__contains__ = self._dict.__contains__
+        self.init_defaults()
+
+    def init_defaults(self):
+        for key, value in default_config.items():
+            if key not in self._dict:
+                self._dict[key] = Config(key=key)  # create a new record
+                self[key] = value
+                self.session.add(self._dict[key])
+
+    def __getitem__(self, key):
+        return json.loads(self._dict[key].value)
+
+    def __setitem__(self, key, value):
+        self._dict[key].value = json.dumps(value)
+
+    def __repr__(self):
+        return repr({key: self[key] for key in self._dict.keys()})
+
+
+default_config = {'military_time': True, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db'}
+
+
+
 
 def fetch_events(date, session):
     return fetch_appointments(date, session), fetch_tasks(date, session), fetch_chores(date, session)
