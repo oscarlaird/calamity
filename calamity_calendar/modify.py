@@ -5,34 +5,36 @@ import os
 import questionary
 import datetime
 
-
 from calamity_calendar import colors
 from calamity_calendar.database import Session, Event
 from calamity_calendar.validators import DateValidator, CodeValidator, TimeValidator, RepetitionValidator
 from calamity_calendar.getch import getch
 
+
 def random_group_id():
     # return a random 4 byte integer
     return int.from_bytes(os.urandom(4), byteorder='big')
 
-def has_repetition(event, session):
-    return event.recurrence_parent is not None and (session.query(Event).filter(Event.recurrence_parent == event.recurrence_parent).filter(Event.id != event.id).first()) is not None
 
-def delete_event(event, session, param=None):
-    # delete event
-    if has_repetition(event, session):
-        if param if param is not None else questionary.confirm("Delete all repetitions?", default=False).ask():
-            # delete all recurrence children
-            session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).delete()
-            return True
-        session.delete(event)
-        return False
+def has_repetition(event, session):
+    return event.recurrence_parent is not None and (
+        session.query(Event).filter(Event.recurrence_parent == event.recurrence_parent).filter(
+            Event.id != event.id).first()) is not None
+
+
+def kill_event(event, session, param=None, group=False):
+    if group:
+        session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).delete()
     else:
         session.delete(event)
-        return None
+
+def kill_future_events(event, session, param=None, group=False):
+    session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).filter(Event.date >= event.date).delete()
 
 
-def edit_date(event, session, param=None):
+def edit_date(event, session, param=None, group=False):
+    if group:
+        raise NotImplementedError
     if param is None:
         old_date = datetime.date.fromordinal(event.date).strftime("%Y-%m-%d")
         date = questionary.text(message="Date (YYYY-MM-DD):", default=old_date, validate=DateValidator).ask()
@@ -42,23 +44,22 @@ def edit_date(event, session, param=None):
     return event.date
 
 
-def postpone(event, session, param=1):
-    event.date += param
-    # shift siblings
-    if event.recurrence_parent is not None:
-        session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).filter(Event.id != event.id).update({Event.date: Event.date + param})
+def postpone(event, session, param=1, group=False):
+    if group and event.recurrence_parent is not None:
+        # shift siblings
+        session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update(
+            {Event.date: Event.date + param})
+    else:
+        event.date += param
     return param
 
 
-postpone_day = lambda event, session, param=None: postpone(event, session, param=1)
-postpone_week = lambda event, session, param=None: postpone(event, session, param=7)
-postpone_month = lambda event, session, param=None: postpone(event, session, param=30)
-prepone_day = lambda event, session, param=None: postpone(event, session, param=-1)
-prepone_week = lambda event, session, param=None: postpone(event, session, param=-7)
-prepone_month = lambda event, session, param=None: postpone(event, session, param=-30)
+postpone_day = lambda event, session, param=None, group=False: postpone(event, session, param=1, group=group)
+prepone_day = lambda event, session, param=None, group=False: postpone(event, session, param=-1, group=group)
 
 
-def edit_description(event, session, param=None):
+def edit_description(event, session, param=None, group=False):
+    old_description = event.description
     event.description = param if param is not None else questionary.text("Description:",
                                                                          default=event.description).ask()
     # make siblings have same description
@@ -68,52 +69,46 @@ def edit_description(event, session, param=None):
     return event.description
 
 
-def cycle_color(event, session, param=None):
-    event.color = colors.CYCLE_DICT[event.color]
-    # make siblings have same color
-    if event.recurrence_parent is not None:
+def cycle_color(event, session, param=None, group=False, backwards=False):
+    event.color = colors.CYCLE_DICT[event.color] if not backwards else colors.CYCLE_DICT_BACKWORDS[event.color]
+    if group and event.recurrence_parent is not None:
         session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update({Event.color: event.color})
 
 
-def cycle_color_backwards(event, session, param=None):
-    event.color = colors.CYCLE_DICT_BACKWORDS[event.color]
-    # make siblings have same color
-    if event.recurrence_parent is not None:
-        session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update({Event.color: event.color})
+cycle_color_forwards = lambda event, session, param=None, group=False: cycle_color(event, session, param=param,
+                                                                                   group=group, backwards=False)
+cycle_color_backwards = lambda event, session, param=None, group=False: cycle_color(event, session, param=param,
+                                                                                    group=group, backwards=True)
 
 
 def edit_code(event, session, param=None):
     if not event.type == "task":
         return
     event.code = param if param is not None else questionary.text("Code:", validate=CodeValidator,
-                                          default=event.code).ask()
+                                                                  default=event.code).ask()
     # make siblings have same code
     if event.recurrence_parent is not None:
         session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update({Event.code: event.code})
     return event.code
 
 
-def repeat_event(event, session, param=None):
+def repeat_event(event, session, param=None, group=False):
     event.recurrence_parent = event.recurrence_parent or random_group_id()  # if no group id, make one
     period, n = param if param is not None else questionary.text("How many times (period+repetitions)?",
-                                 validate=RepetitionValidator,
-                                 default="7+1").ask().split('+')
-    for i in range(1, int(n) + 1):
-        new_event = event.copy()
-        new_event.date += i * int(period)
-        session.add(new_event)
+                                                                 validate=RepetitionValidator,
+                                                                 default="7+1").ask().split('+')
+    siblings = [event] if not group else session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).all()
+    # for each sibling in the recurrence group, create n new events with period days in between
+    for sib in siblings:
+        for i in range(1, int(n) + 1):
+            new_event = sib.copy()
+            new_event.date += i * int(period)
+            session.add(new_event)
     session.flush()  # get the id and default values back from the database
     return (period, n)
 
 
-
-def duplicate_event(event, session, param=None):
-    repeat_event(event, session, param=(0, 1))
-    # new_event = event.copy()  # will even include recurrence parent, but could be none
-    # session.add(new_event)  # add to database to get id
-    return None
-
-def detach_event(event, session, param=None):
+def detach_event(event, session, param=None, group=None):
     event.recurrence_parent = random_group_id()
 
 
@@ -139,15 +134,13 @@ def edit_time(event, session, param=None):
             {Event.start_time: event.start_time, Event.end_time: event.end_time})
     return (event.start_time, event.end_time)
 
-def edit_start_time(event, session, param=None):
-    pass
-
-def edit_end_time(event, session, param=None):
-    pass
 
 def add_event(event, session, param=None):
     if param is None:
         param = {}
+    for key, value in param.items():
+        if key != 'id':
+            setattr(event, key, value)
     if event.type == "task":
         edit_code(event, session, param=param.get('code'))
     elif event.type == "appointment":

@@ -88,10 +88,10 @@ class ConfigDict:
                 self.session.add(self._dict[key])
 
     def __getitem__(self, key):
-        return json.loads(self._dict[key].value)
+        return json.loads(self._dict[key].value)  # self._dict[key] is a Config object (sql record)
 
     def __setitem__(self, key, value):
-        self._dict[key].value = json.dumps(value)
+        self._dict[key].value = json.dumps(value)  # self._dict[key] is a Config object (sql record)
 
     def __repr__(self):
         return repr({key: self[key] for key in self._dict.keys()})

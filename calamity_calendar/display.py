@@ -103,7 +103,7 @@ def chore_str(chore, cal):
 def chores_row(date, cal):
     chores = database.fetch_chores(date, cal.session)
     chores = [chore_str(chore, cal) for chore in chores]
-    chores = ''.join(['  '] * (4 - len(chores)) + chores[:4])  # pad to 4 chores
+    chores = ''.join(['  '] * (4 - len(chores)) + chores[3::-1])  # pad to 4 chores
     return chores
 
 
@@ -116,7 +116,7 @@ def day_row(date, cal):
     day_of_month = datetime.date.fromordinal(date).day
     selected = date == cal.chosen_date
     hotkey = chr(ord('A') + date - cal.from_date)
-    hotkey = colors.ANSI_REVERSE * selected + hotkey + colors.REVERSE_OFF * selected
+    hotkey = str(colors.ANSI_REVERSE) * selected + hotkey + str(colors.REVERSE_OFF) * selected
     return f"{chores}{appointments}▏ {day_of_month:>2}│{'*' if selected else ' '}{hotkey} │{tasks}{colors.RESET}"
 
 
@@ -142,3 +142,13 @@ def show_days_events(cal):
                        f"{event.description or event.code}"
                        f"{colors.ANSI_RESET}")
     print()
+
+
+def rot13(text):
+    # Define the ROT13 translation table
+    trans = str.maketrans(
+        'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz',
+        'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'
+    )
+
+    return text.translate(trans)

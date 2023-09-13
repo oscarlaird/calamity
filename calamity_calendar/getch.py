@@ -25,6 +25,10 @@ def getch(watch_resize=False):
     terminal_resized = False
 
     fd = sys.stdin.fileno()
+    # if we are not connected to a terminal, just use python's input
+    if not sys.stdin.isatty():
+        return input('getch: ')[0]
+
     old_settings = termios.tcgetattr(fd)
     try:
         tty.setraw(fd)

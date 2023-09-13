@@ -1,4 +1,4 @@
-COLORS = ["red", "green", "blue", "yellow", "magenta", "cyan", "white"]
+COLORS = ["red", "green", "yellow", "magenta", "cyan", "white"]
 CYCLE_DICT = {color: COLORS[(i + 1) % len(COLORS)] for i, color in enumerate(COLORS)}
 CYCLE_DICT_BACKWORDS = {color: COLORS[(i - 1) % len(COLORS)] for i, color in enumerate(COLORS)}
 
