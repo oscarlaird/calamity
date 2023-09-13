@@ -32,64 +32,35 @@ def kill_future_events(event, session, param=None, group=False):
     session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).filter(Event.date >= event.date).delete()
 
 
-def edit_date(event, session, param=None, group=False):
-    if group:
-        raise NotImplementedError
-    if param is None:
-        old_date = datetime.date.fromordinal(event.date).strftime("%Y-%m-%d")
-        date = questionary.text(message="Date (YYYY-MM-DD):", default=old_date, validate=DateValidator).ask()
-        event.date = datetime.datetime.strptime(date, "%Y-%m-%d").toordinal()
-    else:
-        event.date = param
-    return event.date
-
-
-def postpone(event, session, param=1, group=False):
+def postpone(event, session, group=False, delta=1):
     if group and event.recurrence_parent is not None:
         # shift siblings
         session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update(
-            {Event.date: Event.date + param})
+            {Event.date: Event.date + delta})
     else:
-        event.date += param
-    return param
+        event.date += delta
 
 
-postpone_day = lambda event, session, param=None, group=False: postpone(event, session, param=1, group=group)
-prepone_day = lambda event, session, param=None, group=False: postpone(event, session, param=-1, group=group)
+
+def edit_field(event, session, param=None, group=False, field=None):
+    # TODO: make this work for start and end time
+    validator = CodeValidator if field == 'code' else DateValidator if field == 'date' else None
+    default = event.code if field == 'code' else datetime.date.fromordinal(event.date).strftime("%Y-%m-%d") if field == 'date' else event.description if field == 'description' else ''
+    message = field.capitalize() + ':'
+    input = questionary.text(message=message, validate=validator, default=default).ask()
+    if field == 'date':
+        input = datetime.datetime.strptime(input, "%Y-%m-%d").toordinal()
+    setattr(event, field, input)
+    # make siblings have same field
+    if group and event.recurrence_parent is not None:
+        session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update({field: getattr(event, field)})
 
 
-def edit_description(event, session, param=None, group=False):
-    old_description = event.description
-    event.description = param if param is not None else questionary.text("Description:",
-                                                                         default=event.description).ask()
-    # make siblings have same description
-    if event.recurrence_parent is not None:
-        session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update(
-            {Event.description: event.description})
-    return event.description
-
-
-def cycle_color(event, session, param=None, group=False, backwards=False):
+def cycle_color(event, session, group=False, backwards=False):
     event.color = colors.CYCLE_DICT[event.color] if not backwards else colors.CYCLE_DICT_BACKWORDS[event.color]
     if group and event.recurrence_parent is not None:
         session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update({Event.color: event.color})
 
-
-cycle_color_forwards = lambda event, session, param=None, group=False: cycle_color(event, session, param=param,
-                                                                                   group=group, backwards=False)
-cycle_color_backwards = lambda event, session, param=None, group=False: cycle_color(event, session, param=param,
-                                                                                    group=group, backwards=True)
-
-
-def edit_code(event, session, param=None):
-    if not event.type == "task":
-        return
-    event.code = param if param is not None else questionary.text("Code:", validate=CodeValidator,
-                                                                  default=event.code).ask()
-    # make siblings have same code
-    if event.recurrence_parent is not None:
-        session.query(Event).filter_by(recurrence_parent=event.recurrence_parent).update({Event.code: event.code})
-    return event.code
 
 
 def repeat_event(event, session, param=None, group=False):
@@ -135,24 +106,12 @@ def edit_time(event, session, param=None):
     return (event.start_time, event.end_time)
 
 
-def add_event(event, session, param=None):
-    if param is None:
-        param = {}
-    for key, value in param.items():
-        if key != 'id':
-            setattr(event, key, value)
-    if event.type == "task":
-        edit_code(event, session, param=param.get('code'))
-    elif event.type == "appointment":
-        interval = (param.get('start_time'), param.get('end_time'))
-        interval = None if (interval[0] is None or interval[1] is None) else interval  # if either is None, set to None
-        edit_time(event, session, param=interval)
-    edit_description(event, session, param=param.get('description'))
-    return event.to_dict()
-
-
-def list_codes(session):
-    # get all unique codes not null
-    all_codes = session.query(Event.code).filter(Event.code != None).distinct().all()
-    all_codes = [code[0] for code in all_codes]
-    return all_codes
+def add_event(event, session, date=None, description=None, color=None, recurrence_parent=None, type=None, start_time=None, end_time=None, code=None):
+    new_event = Event(date=date, description=description, color=color, recurrence_parent=recurrence_parent, type=type, start_time=start_time, end_time=end_time, code=code)
+    session.add(new_event)
+    session.flush()  # get the id of the new event
+    if event.type == "task" and code is None:
+        edit_field(event, session, field='code')
+    elif event.type == "appointment" and (start_time is None or end_time is None):
+        edit_time(event, session)
+    return {'date': new_event.date, 'description': new_event.description, 'color': new_event.color, 'recurrence_parent': new_event.recurrence_parent, 'type': new_event.type, 'start_time': new_event.start_time, 'end_time': new_event.end_time, 'code': new_event.code}
