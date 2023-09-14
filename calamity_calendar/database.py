@@ -47,6 +47,15 @@ class Event(Base):
     # Tasks
     code = sqlalchemy.Column(sqlalchemy.String, default="")
 
+    def __post_init__(self):
+        if self.recurrence_parent is None:
+            self.recurrence_parent = self.random_group_id()
+
+    @staticmethod
+    def random_group_id(self):
+        # return a random 4 byte integer
+        return int.from_bytes(os.urandom(4), byteorder='big')
+
     def copy(self):
         return Event(date=self.date,
                      description=self.description,
@@ -74,9 +83,9 @@ class Config(Base):
 
 class ConfigDict:
 
-    def __init__(self, session):
-        self.session = session
-        self._dict = {row.key: row for row in session.query(Config).all()}
+    def __init__(self):
+        self.session = Session()
+        self._dict = {row.key: row for row in self.session.query(Config).all()}
         self.__contains__ = self._dict.__contains__
         self.init_defaults()
 
@@ -87,17 +96,22 @@ class ConfigDict:
                 self[key] = value
                 self.session.add(self._dict[key])
 
+    def commit(self):
+        self.session.commit()
+
     def __getitem__(self, key):
         return json.loads(self._dict[key].value)  # self._dict[key] is a Config object (sql record)
 
     def __setitem__(self, key, value):
+        assert key in default_config
         self._dict[key].value = json.dumps(value)  # self._dict[key] is a Config object (sql record)
 
     def __repr__(self):
         return repr({key: self[key] for key in self._dict.keys()})
 
 
-default_config = {'military_time': True, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db'}
+default_config = {'military_time': False, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db', 'ROT13': False, 'show_help': True}
+config = ConfigDict()
 
 
 

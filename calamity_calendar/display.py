@@ -2,55 +2,37 @@ import math
 import datetime
 # to get the width of the terminal, use shutil.get_terminal_size().columns
 import shutil
-import signal
+# import signal
 import wcwidth
 
 from calamity_calendar import colors, database
 
 NUM_DAYS = 30
-MILITARY = False
-TIMETABLE_START_HOUR = 7
-TIMETABLE_START = 7 * 4  # start at 7am
-TIMETABLE_END = 19 * 4  # end at 7pm
-TIMETABLE_WIDTH = 48
-TABLE_WIDTH = 8 + 48 + 8 + 10 * 3 + 2
-
-TERM_WIDTH = shutil.get_terminal_size().columns
-MARGIN = ' ' * ((TERM_WIDTH - TABLE_WIDTH) // 2)
-
-timetable_header = '        7   8   9  10  11  12   1   2   3   4   5   6   '
-
-def refresh_term_size():
-    global TERM_WIDTH, MARGIN
-    TERM_WIDTH = shutil.get_terminal_size().columns
-    MARGIN = ' ' * ((TERM_WIDTH - TABLE_WIDTH) // 2)
-
-def set_military(use_military: bool):
-    global MILITARY
-    MILITARY = use_military
-    change_start_time(TIMETABLE_START_HOUR)
-
-def change_start_time(hour):
-    global TIMETABLE_START, TIMETABLE_START_HOUR, TIMETABLE_END, timetable_header
-    TIMETABLE_START_HOUR = hour
-    TIMETABLE_START = hour * 4
-    TIMETABLE_END = (hour + 12) * 4
-    fill = '0' if MILITARY else ' '
-    nums = range(hour, hour + 12)
-    if not MILITARY:
+N_HOURS = 12
+TIMETABLE_WIDTH = N_HOURS * 4
+TABLE_WIDTH = 8 + TIMETABLE_WIDTH + 8 + 10 * 3 + 2
+def get_timetable_start():
+    return database.config['start_hour'] * 4
+def get_timetable_end():
+    return (database.config['start_hour'] + N_HOURS) * 4
+def get_term_width():
+    return shutil.get_terminal_size().columns
+def get_margin():
+    return ' ' * ((get_term_width() - TABLE_WIDTH) // 2)
+def get_timetable_header():
+    fill = '0' if database.config['military_time'] else ' '
+    nums = range(database.config['start_hour'], database.config['start_hour'] + N_HOURS)
+    if not database.config['military_time']:
         nums = [(n - 1) % 12 + 1 for n in nums]
-    timetable_header = ' '*7 + '  '.join(str(n).rjust(2, fill) for n in nums) + ' '*3
+    return ' '*7 + '  '.join(str(n).rjust(2, fill) for n in nums) + ' '*3
 
-
-# Set up signal handler for SIGWINCH
-signal.signal(signal.SIGWINCH, lambda signum, frame: refresh_term_size())
 
 def welcome():
     print('\n' * 100)  # clear the screen
     print(colors.ANSI_BOLD +
-          "CAL-AMITY: Make friends with your timetable and avoid disaster.".center(TERM_WIDTH) + '\n' +
+          "CAL-AMITY: Make friends with your timetable and avoid disaster.".center(get_term_width()) + '\n' +
           'A-Z) Select day    1-9) Select event    a-z) Commands   ?) Help'.center(
-              TERM_WIDTH) + '\n' + colors.ANSI_RESET)
+              get_term_width()) + '\n' + colors.ANSI_RESET)
 
 
 def task_code(task, cal):
@@ -63,7 +45,8 @@ def task_code(task, cal):
     if task is cal.chosen_event:
         symbol = '**'
         prefix += colors.BOLD_ON
-    return prefix + (symbol + task.code).ljust(10)[:10] + suffix  # pad to 10 characters
+    code = conditional_rot13(task.code)
+    return prefix + (symbol + code).ljust(10)[:10] + suffix  # pad to 10 characters
 
 def tasks_row(date, cal):
     return ' '.join(task_code(task, cal) for task in database.fetch_tasks(date, cal.session))
@@ -75,8 +58,8 @@ def timetable_row(date, cal):
     blocks = list(base_blocks)
     for idx, appointment in enumerate(appointments):
         assert appointment.type == "appointment"
-        start_quarter_hours = max(math.floor(appointment.start_time / 15) - TIMETABLE_START, 0)
-        end_quarter_hours = min(math.ceil(appointment.end_time / 15) - TIMETABLE_START, TIMETABLE_WIDTH)
+        start_quarter_hours = max(math.floor(appointment.start_time / 15) - get_timetable_start(), 0)
+        end_quarter_hours = min(math.ceil(appointment.end_time / 15) - get_timetable_start(), TIMETABLE_WIDTH)
         if start_quarter_hours >= TIMETABLE_WIDTH or end_quarter_hours <= 0:
             continue
         selected = appointment is cal.chosen_event
@@ -126,8 +109,8 @@ def display_calendar(cal):
         date_num = cal.from_date + i
         date = datetime.date.fromordinal(date_num)
         if date.day == 1 or i == 0:
-            print(MARGIN + timetable_header + colors.ANSI_BOLD + date.strftime("%B").center(9) + colors.ANSI_RESET)
-        print(MARGIN + day_row(date_num, cal))
+            print(get_margin() + get_timetable_header() + colors.ANSI_BOLD + date.strftime("%B").center(9) + colors.ANSI_RESET)
+        print(get_margin() + day_row(date_num, cal))
     print('\n' * 2)
     print(colors.UP_LINE * 2, end='')
 
@@ -135,20 +118,24 @@ def show_days_events(cal):
     prev_type = None
     for i, event in enumerate(cal.events):
         if event.type != prev_type:
-            print(MARGIN + f"          {event.type.capitalize()}s:")
+            print(get_margin() + f"          {event.type.capitalize()}s:")
             prev_type = event.type
-        print(MARGIN + f"            {chr(ord('1') + i)}) "
+        text = conditional_rot13(event.description or event.code)
+        print(get_margin() + f"            {chr(ord('1') + i)}) "
                        f"{colors.ANSI_COLOR_DICT[event.color]}{colors.ANSI_REVERSE * (event is cal.chosen_event)}"
-                       f"{event.description or event.code}"
+                       f"{text}"
                        f"{colors.ANSI_RESET}")
     print()
 
 
+rot13_trans = str.maketrans(
+    'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz',
+    'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'
+)
+
 def rot13(text):
     # Define the ROT13 translation table
-    trans = str.maketrans(
-        'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz',
-        'NOPQRSTUVWXYZnopqrstuvwxyzABCDEFGHIJKLMabcdefghijklm'
-    )
-
-    return text.translate(trans)
+    return text.translate(rot13_trans)
+def conditional_rot13(text):
+    # Do ROT13 if the config says so
+    return rot13(text) if database.config['ROT13'] else text
