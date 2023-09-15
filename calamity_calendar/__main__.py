@@ -62,15 +62,15 @@ class Calamity:
             old_type = self.chosen_event.type
             old_chore_idx, old_task_idx = self.chore_idx, self.task_idx,
             old_appt_start, old_appt_end = self.chosen_event.start_time, self.chosen_event.end_time
-        # set the chosen date and re-fetch the list of events
-        self._chosen_date = date
-        self.appointments, self.tasks, self.chores = database.fetch_events(self.chosen_date, session=self.session)
-        self.events = self.appointments + self.tasks + self.chores
         # fix the window
         if self.from_date + display.NUM_DAYS <= self.chosen_date:
             self.from_date = self.chosen_date - display.NUM_DAYS + 1
         elif self.chosen_date < self.from_date:
             self.from_date = self.chosen_date
+        # set the chosen date and re-fetch the list of events
+        self._chosen_date = date
+        self.appointments, self.tasks, self.chores = database.fetch_events(self.chosen_date, session=self.session)
+        self.events = self.appointments + self.tasks + self.chores
         # try to keep the same chore_idx/appt_idx/task_idx if possible
         if self.chosen_event and self.chosen_event.date != date:
             if old_type == 'chore':
@@ -80,10 +80,12 @@ class Calamity:
             elif old_type == 'appointment':
                 self.chosen_event = None
                 for event in self.appointments:
-                    if (old_appt_start < event.end_time <= old_appt_end) or (
-                            old_appt_start <= event.start_time < old_appt_end):
+                    # set if we start before or during the event (i.e. start <= end)
+                    # if still None, set
+                    if (event.start_time < old_appt_end):
                         self.chosen_event = event
-                        break
+                    elif self.chosen_event is None:
+                        self.chosen_event = event
             else:
                 self.chosen_event = None
 
@@ -109,7 +111,7 @@ class Calamity:
 
     @task_idx.setter
     def task_idx(self, idx):
-        self.chosen_event_idx = len(self.appointments) + idx if idx < len(self.tasks) else None
+        self.chosen_event_idx = len(self.appointments) + idx if idx < len(self.tasks) else len(self.appointments) + len(self.tasks) - 1 if self.tasks else None
 
     @property
     def appointment_idx(self):
@@ -119,7 +121,7 @@ class Calamity:
 
     @appointment_idx.setter
     def appointment_idx(self, idx):
-        self.chosen_event_idx = idx if idx < len(self.appointments) else None
+        self.chosen_event_idx = idx if idx < len(self.appointments) else len(self.appointments) - 1 if self.appointments else None
 
     @property
     def chore_idx(self):
@@ -129,7 +131,8 @@ class Calamity:
 
     @chore_idx.setter
     def chore_idx(self, idx):
-        self.chosen_event_idx = len(self.appointments) + len(self.tasks) + idx if idx < len(self.chores) else None
+        zero = len(self.appointments) + len(self.tasks)
+        self.chosen_event_idx = zero + idx if idx < len(self.chores) else (zero + len(self.chores) - 1) if self.chores else None
 
     def idx_of(self, event):
         # get the index of event in the list of events
@@ -209,7 +212,7 @@ class Calamity:
                 database.Event.recurrence_parent == self.chosen_event.recurrence_parent)
         self.yank_list = [event.to_dict() for event in yank_list]
 
-    def paste(self):
+    def paste(self, group=None):
         # self.yank is a list of events serialized as dictionaries
         delta = self.chosen_date - self.yank_date
         for event_dict in self.yank_list:
@@ -221,6 +224,11 @@ class Calamity:
             if new_event.date == self.chosen_date:
                 self.chosen_event = new_event
         self.session.flush()  # get the ids of the new events back from the database
+
+    def separate(self, group=None):
+        if self.chosen_event is None:
+            return
+        self.chosen_event.recurrence_parent = database.Event.random_group_id()
 
     # UNDO/REDO HISTORY
     def undo(self):
@@ -238,6 +246,13 @@ class Calamity:
             _, _, func, args, kwargs = self.redo_stack.pop()
             func(*args, **kwargs)  # replay
 
+    def repeat(self):
+        last_action = self.redo_stack[0] if self.redo_stack else self.undo_stack[-1] if self.undo_stack else None
+        if not last_action:
+            return
+        _, _, func, args, kwargs = last_action
+        self.checkpoint_wrapper(func, *args, **kwargs)  # replay the last action (checkpointing)
+
     def checkpoint_wrapper(self, func, *args, **kwargs):
         # undo record: chosen_date, chosen_event_idx, chosen_function, param (we want to know where we were before we did the action)
         # undo record:
@@ -247,7 +262,7 @@ class Calamity:
         # - args
         # - kwargs             What did we do? With what arguments?
         # to repeat an action using (.) we need to use the new chosen_event/date. However, these can't be retrieved from args.
-        undo_record = [self.chosen_date, self.chosen_event_idx, func, args, kwargs]  # TODO refactor triple
+        undo_record = [self.chosen_date, self.chosen_event_idx, func, args, kwargs]
         new_kwargs = func(*args, **kwargs)
         if new_kwargs is not None:
             assert isinstance(new_kwargs,
@@ -295,10 +310,10 @@ class Calamity:
             setattr(self, event_type + '_idx', 0)
 
     def get_search_term(self):
-        self.search = questionary.text("Search: ", default=self.search).ask()
-        self.matching = (database.Event.description.like(f'%{self.search}%') |
-                         database.Event.code.like(f'%{self.search}%')) if self.search else None
-        self.search_motion(back=False)
+        search = questionary.text("Search: ").ask()
+        self.matching = (database.Event.description.like(f'%{search}%') |
+                         database.Event.code.like(f'%{search}%')) if search else None
+        self.search_motion()
 
     def get_search_group(self, back=False):
         if self.chosen_event and self.chosen_event.recurrence_parent:
@@ -340,6 +355,8 @@ class Calamity:
 
     # MODIFY
     def kill_event(self, group=False):
+        old_type = self.chosen_event.type
+        old_type_idx = getattr(self, old_type + '_idx')
         if self.chosen_event is None:
             return
         self.yank(group=group)
@@ -347,7 +364,8 @@ class Calamity:
             self.session.query(Event).filter_by(recurrence_parent=self.chosen_event.recurrence_parent).delete()
         else:
             self.session.delete(self.chosen_event)
-        self.chosen_event = None
+        self.chosen_date = self.chosen_date  # update events
+        setattr(self, old_type + '_idx', old_type_idx)
 
     def kill_future_events(self):
         if self.chosen_event is None:
@@ -407,11 +425,13 @@ class Calamity:
     def cycle_color(self, group=False, backwards=False):
         if self.chosen_event is None:
             return
-        self.chosen_event.color = colors.CYCLE_DICT[self.chosen_event.color] if not backwards else \
-            colors.CYCLE_DICT_BACKWORDS[self.chosen_event.color]
+        old_color = self.chosen_event.color
+        new_color = colors.CYCLE_DICT[old_color] if not backwards else colors.CYCLE_DICT_BACKWORDS[old_color]
+        self.chosen_event.color = new_color
+        database.config['color'] = new_color
         if group and self.chosen_event.recurrence_parent is not None:
             self.session.query(Event).filter_by(recurrence_parent=self.chosen_event.recurrence_parent).update(
-                {Event.color: self.chosen_event.color})
+                {Event.color: new_color})
 
     cycle_color_forward = lambda self, group=False: self.cycle_color(group=group, backwards=False)
     cycle_color_backward = lambda self, group=False: self.cycle_color(group=group, backwards=True)
@@ -446,16 +466,20 @@ class Calamity:
         if self.chosen_event is None or self.chosen_event.type != 'appointment':
             return
         start_time = self.edit_field(field='start_time', new_value=start_time, group=group)['new_value']
-        end_time =   self.edit_field(field='end_time',   new_value=end_time,   group=group)['new_value']
+        end_time = self.edit_field(field='end_time', new_value=end_time, group=group)['new_value']
         return {'start_time': start_time, 'end_time': end_time}
 
     def add_event(self, date=None, description=None, color=None, recurrence_parent=None, type=None, start_time=None,
                   end_time=None, code=None):
         # TODO use an event dict so you aren't writing out column names
-        new_event = Event(date=date, description=description, color=color, recurrence_parent=recurrence_parent,
+        new_event = Event(date=(date or self.chosen_date), description=description, color=color, recurrence_parent=recurrence_parent,
                           type=type, start_time=start_time, end_time=end_time, code=code)
         self.session.add(new_event)
+        print(new_event.recurrence_parent)
+        print(new_event.color)
         self.session.flush()  # get the id of the new event
+        print(new_event.recurrence_parent)
+        print(new_event.color)
         self.chosen_event = new_event
         if type == "task" and code is None:
             self.edit_field(field='code')
@@ -463,9 +487,9 @@ class Calamity:
             self.edit_time()
         if description is None:
             self.edit_field(field='description')
-        return {'date': new_event.date, 'description': new_event.description, 'color': new_event.color,
-                'recurrence_parent': new_event.recurrence_parent, 'type': new_event.type,
-                'start_time': new_event.start_time, 'end_time': new_event.end_time, 'code': new_event.code}
+        return {'description':       new_event.description,       'start_time': new_event.start_time,
+                'end_time':          new_event.end_time,          'code':       new_event.code,
+                'recurrence_parent': new_event.recurrence_parent, 'color':      new_event.color}
 
     def move_event(self, target=None, fail=False, group=False):
         if self.chosen_event is None:

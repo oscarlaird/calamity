@@ -7,6 +7,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+from calamity_calendar import colors
+
 import logging
 
 # delete the log file
@@ -38,7 +40,7 @@ class Event(Base):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     date = sqlalchemy.Column(sqlalchemy.Integer, default=datetime.date.today().toordinal())  # stored as julian date
     description = sqlalchemy.Column(sqlalchemy.String, default="")
-    color = sqlalchemy.Column(sqlalchemy.String, default='red')
+    color = sqlalchemy.Column(sqlalchemy.String, default=None)
     recurrence_parent = sqlalchemy.Column(sqlalchemy.Integer) # id of parent event
     type = sqlalchemy.Column(sqlalchemy.String, default='task') # type of event, e.g. appointment, task, etc. # enforce not NULL
     # Appointments
@@ -47,12 +49,20 @@ class Event(Base):
     # Tasks
     code = sqlalchemy.Column(sqlalchemy.String, default="")
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__post_init__()
+
     def __post_init__(self):
         if self.recurrence_parent is None:
             self.recurrence_parent = self.random_group_id()
+        if self.color is None:
+            # cycle to the next color
+            config['color'] = colors.CYCLE_DICT[config['color']]
+            self.color = config['color']
 
     @staticmethod
-    def random_group_id(self):
+    def random_group_id():
         # return a random 4 byte integer
         return int.from_bytes(os.urandom(4), byteorder='big')
 
@@ -110,7 +120,7 @@ class ConfigDict:
         return repr({key: self[key] for key in self._dict.keys()})
 
 
-default_config = {'military_time': False, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db', 'ROT13': False, 'show_help': True}
+default_config = {'military_time': False, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db', 'ROT13': False, 'show_help': True, 'color': 'cyan'}
 config = ConfigDict()
 
 

@@ -58,30 +58,43 @@ R['z']['b'] = lambda self: setattr(self, 'from_date', self.chosen_date - display
 R['z']['z'] = lambda self: setattr(self, 'from_date', self.chosen_date - display.NUM_DAYS // 2)
 R['z']['k'] = lambda self: setattr(self, 'from_date', self.from_date - 1)
 R['z']['j'] = lambda self: setattr(self, 'from_date', self.from_date + 1)
+# display config
 R['z']['h'] = lambda self: database.config.__setitem__('start_hour', database.config['start_hour'] - 1)
 R['z']['l'] = lambda self: database.config.__setitem__('start_hour', database.config['start_hour'] + 1)
 R['z']['0'] = lambda self: database.config.__setitem__('military_time', not database.config['military_time'])
 R['z']['?'] = lambda self: database.config.__setitem__('show_help', not database.config['show_help'])
+R['g']['?'] = lambda self: database.config.__setitem__('ROT13', not database.config['ROT13'])
 R['\x1b']['[']['A'] = R['z']['k']
 R['\x1b']['[']['B'] = R['z']['j']
 R['\x1b']['[']['D'] = R['z']['h']
 R['\x1b']['[']['C'] = R['z']['l']
-# MISC_COMMANDS (INTRANSITIVE)
-R['u'] = lambda self: self.undo()  # TODO undo/redo/undo should work
-R['\x12'] = lambda self: self.redo()
+
+# MISC_COMMANDS
+# help
 R['?'] = lambda self: self.show_help()
+# quit
 R['q'] = lambda self: self.quit()  # TODO do I really need a lambda here?
 R['\x1b']['\x1b'] = R['q']
 R['\x03'] = lambda self: self.quit(save=False)
+# backup
 R['v'] = lambda self: self.make_backup()
-R['g']['?'] = lambda self: database.config.__setitem__('ROT13', not database.config['ROT13'])
-R['p'] = lambda self: self.checkpoint_wrapper(self.paste)
+# undo/redo
+R['u'] = lambda self: self.undo()  # TODO undo/redo/undo should work
+R['\x12'] = lambda self: self.redo()
+R['.'] = lambda self: self.repeat()
+
 # NEW_TYPES
 for key, event_type in zip('atc', ('appointment', 'task', 'chore')):
-    R[key] = lambda self, event_type=event_type: self.checkpoint_wrapper(self.add_event, date=self.chosen_date, type=event_type)
-# MODIFY
-# toggle type
-# EDIT
+    R[key] = lambda self, event_type=event_type: self.checkpoint_wrapper(self.add_event, type=event_type)
+# COMMANDS (TRANSITIVE)
+cmds = {'-': 'prepone_one', '+' : 'postpone_one', '=': 'postpone_one',
+        ';' : 'cycle_color_forward', ',': 'cycle_color_backward', '~': 'toggle_type',
+        'r': 'repeat_event', 'x': 'kill_event', 'm': 'move_event',
+        'p': 'paste', 's': 'separate'}
+for key, func in cmds.items():
+    R[key] =     lambda self, func=func, group=False: self.checkpoint_wrapper(getattr(self, func), group=group)
+    R['g'][key] = lambda self, func=func, group=True: self.checkpoint_wrapper(getattr(self, func), group=group)
+# edit
 for key, field in zip('Ddcsf', ('date', 'description', 'code', 'start_time', 'end_time')):
     R['e'][key] = lambda self, field=field: self.checkpoint_wrapper(self.edit_field, field=field)
     R['g'][key] = lambda self, field=field: self.checkpoint_wrapper(self.edit_field, field=field, group=True)
@@ -89,17 +102,5 @@ for key, field in zip('Ddcsf', ('date', 'description', 'code', 'start_time', 'en
 R['e']['t'] = lambda self: self.checkpoint_wrapper(self.edit_time)
 R['g']['t'] = lambda self: self.checkpoint_wrapper(self.edit_time, group=True)
 R['g']['e']['t'] = R['g']['t']
-
-# COMMANDS (TRANSITIVE)
-# color cycle
-cmds = {'-': 'prepone_one', '+' : 'postpone_one', '=': 'postpone_one',
-        ';' : 'cycle_color_forward', ',': 'cycle_color_backward', '~': 'toggle_type',
-        'r': 'repeat_event', 'x': 'kill_event', 'm': 'move_event'}
-for key, func in cmds.items():
-    R[key] =     lambda self, func=func, group=False: self.checkpoint_wrapper(getattr(self, func), group=group)
-    R['g'][key] = lambda self, func=func, group=True: self.checkpoint_wrapper(getattr(self, func), group=group)
-
-# postpone / prepone
-R['s'] = lambda self: self.checkpoint_wrapper(
-    lambda: setattr(self.chosen_event, 'recurrence_parent', database.Event.random_group_id()))
+# delete future events
 R['g']['X'] = lambda self: self.checkpoint_wrapper(self.kill_future_events)

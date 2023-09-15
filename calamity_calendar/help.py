@@ -1,49 +1,58 @@
-
 help = """
-    ┌──────────────────────────────────────────────────────────────────────┐
-    │                               HELP                                   │
-    ├──────────────────────────────────────────────────────────────────────┤
-    │                                                                      │
-    │ Principles:                                                          │
-    │   • Three kinds of events: appointments, tasks, and chores.          │
-    │       ○ Appointments: start time and end time.                       │
-    │       ○ Tasks: have a deadline (e.g. homework).                      │
-    │       ○ Chores: performed on the day they're scheduled (e.g. hygiene)│
-    │                                                                      │
-    │   • Events selected using a coordinate system:                       │
-    │       ○ Day: press a capital letter (A-Z).                           │
-    │       ○ Event: press a number (1-9).                                 │
-    │                                                                      │
-    │   • Events repetition: daily, weekly, or monthly.                    │
-    │       ○ Create repetition: press 'r' on an event.                    │
-    │       ○ Repetitions usually share description, color, time, etc.     │
-    │       ○ Separate repetition: press 's' on an event.                  │
-    │                                                                      │
-    ├──── Selection ────┬─────────── New Event Types ──────────────────────┤
-    │ A-Z) Select a day │ a) Appointment                                   │
-    │ 1-9) Select event │ t) Task                                          │
-    │                   │ c) Chore                                         │
-    ├──── Navigation ───┴┬────────────── Edit Commands ────────────────────┤
-    │ j) Down            │ m) Move (edit date)                             │
-    │ k) Up              │ d) Edit description                             │
-    │ l) Right           │ i) Edit time (appointments only)                │
-    │ h) Left            │ o) Edit code (tasks only)                       │
-    │ <) Previous month  │ ;) Cycle color                                  │
-    │ >) Next month      │ ,) Cycle color backwards                        │
-    │ b) Previous week   │ x) Delete                                       │
-    │ w) Next week       │ r) Repeat                                       │
-    │                    │                                                 │
-    ├─── Other Motions ──┴─────────────────── Miscellaneous ───────────────┤
-    │ TAB) Cycle through events │ ?) Help                                  │
-    │ SPC) Cycle appointments   │ u) Undo                                  │
-    │ RET) Cycle tasks          │ CTRL-R) Redo                             │
-    │ gg) First month           │ SPC) +1 month                            │
-    │ zz) Center in window      │ BAC) -1 month                            │
-    │ zb) Bottom of window      │ ESC) Quit                                │
-    │ zt) Top of window         │ q) Quit                                  │
-    │                           │ y) Duplicate                             │
-    │                           │ s) Separate/Detach                       │
-    ├───────────────────────────┴──────────────────────────────────────────┤
-    │                        [Press any key to continue...]                │
-    └──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                           HELP                                                      │
+├─────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                     │
+│ Principles:                                                                                         │
+│   • Three kinds of events: appointments, tasks, and chores.                                         │
+│       ○ Appointments: start time and end time.                                                      │
+│       ○ Tasks: have a deadline (e.g. homework).                                                     │
+│       ○ Chores: performed on the day they're scheduled (e.g. hygiene)                               │
+│                                                                                                     │
+│   • Selection:                                                                                      │
+│       ○ Coordinate system: Day (A-Z), Event (1-9).                                                  │
+│       ○ Vim motions (e.g. j, k, h, l) to navigate.                                                  │
+│                                                                                                     │
+│   • Repetitions (Groups):                                                                           │
+│       ○ 'r': Create GROUP. E.g. r followed by 7+13 creates 13 weekly repetitions.                   │
+│       ○ y/p: Yank & paste a repetition or event.                                                    │
+│                                                                                                     │
+│   • Group Prefix:                                                                                   │
+│       ○ Prefix 'g': Applies edit command to the entire repetition group (e.g. g+, gx, ged).         │
+│                                                                                                     │
+├─────────────────────────────────────── New Event Types ─────────────────────────────────────────────┤
+│                                                                                                     │
+│      a) APPOINTMENT                      c) CHORE                               t) TASK             │
+│                                                                                                     │
+├──────── Selection ────────┬───────────── Edit Commands ─────────────┬──────────── View ─────────────┤
+│ A-Z) Day                  │   eD) Edit date                         │  zk) Up                       │
+│ 1-9) Event                │   ed) Edit description                  │  zj) Down                     │
+│ j) Down                   │   ec) Edit code (task)                  │  zh) Left                     │
+│ k) Up                     │   es) Edit start time (appointment)     │  zl) Right                    │
+│ l) Right (Event)          │   ef) Edit finish time (appointment)    │  zz) Center                   │
+│ h) Left (Event)           │   et) Edit time (appointment)           │  zt) Top                      │
+│ <) Previous month         │   ;) Cycle color forwards               │  zb) Bottom                   │
+│ >) Next month             │   ,) Cycle color backwards              │  z0) Toggle 12/24 hour        │
+│ b) Previous week          │   +) Postpone one day                   │  z?) Toggle help visibility   │
+│ w) Next week              │   -) Prepone one day                    │  g!) Toggle ROT13 encryption  │
+│ TAB) Next chore           │   x) Delete event                       │                               │
+│ SPC) Next appointment     │   r) Repeat event                       ├─────────── Undo ──────────────┤
+│ RET) Next task            │   m) Move event                         │  u) Undo                      │
+│ gg) Jump to today         │   ~) Toggle chore / task                │  CTRL-R) Redo                 │
+│                           │   gX) Kill future repetitions           │  .) Repeat last action        │
+├───────────────────────────┴─────────────────────────────────────────┴───────────────────────────────┤
+│                                                                                                     │
+│      ANY EDIT COMMAND CAN BE GIVEN THE PREFIX [g] TO APPLY TO THE ENTIRE REPETITION GROUP           │
+│                                                                                                     │
+├─────────────────── Search ────────────────────┬────────────────── Miscellaneous ────────────────────┤
+│ /) Search                                     │  y) Yank event (gy to yank group)                   │
+│ n) Next match                                 │  p) Paste yanked event/group                        │
+│ N) Previous match                             │  s) Separate from repetition group                  │
+│ *) Next repetition                            │  v) Backup calendar                                 │
+│ #) Previous repetition                        │  q) Quit                                            │
+├───────────────────────────────────────────────┴─────────────────────────────────────────────────────┤
+│                                  [Press any key to continue...]                                     │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘
 """
+
+

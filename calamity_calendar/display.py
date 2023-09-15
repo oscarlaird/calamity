@@ -70,7 +70,9 @@ def timetable_row(date, cal):
             if row_selected and start_quarter_hours == i:
                 symbol = chr(ord('1') + idx)
             blocks[i] = symbol
-        prefix = colors.ANSI_REVERSE + colors.ANSI_COLOR_DICT.get(appointment.color, '') + colors.BACKGROUND_COLOR_DICT['white'] + colors.BOLD_ON * selected
+        prefix = colors.ANSI_REVERSE + colors.ANSI_COLOR_DICT.get(appointment.color, '') + colors.BACKGROUND_COLOR_DICT['white']
+        if selected:
+            prefix += colors.BOLD_ON + colors.BACKGROUND_COLOR_DICT['black']
         blocks[start_quarter_hours] = prefix + blocks[start_quarter_hours]
         blocks[end_quarter_hours - 1] += colors.ANSI_RESET
     return ''.join(blocks)
