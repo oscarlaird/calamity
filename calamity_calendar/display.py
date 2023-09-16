@@ -30,9 +30,9 @@ def get_timetable_header():
 def welcome():
     print('\n' * 100)  # clear the screen
     print(colors.ANSI_BOLD +
-          "CAL-AMITY: Make friends with your timetable and avoid disaster.".center(get_term_width()) + '\n' +
-          'A-Z) Select day    1-9) Select event    a-z) Commands   ?) Help'.center(
-              get_term_width()) + '\n' + colors.ANSI_RESET)
+          "CAL-AMITY: Make friends with your timetable and avoid disaster.".center(get_term_width()) + '\n\n' +
+          'Press ? for help.'.center(get_term_width()) + '\n' +
+          colors.ANSI_RESET)
 
 
 def task_code(task, cal):
@@ -113,8 +113,6 @@ def display_calendar(cal):
         if date.day == 1 or i == 0:
             print(get_margin() + get_timetable_header() + colors.ANSI_BOLD + date.strftime("%B").center(9) + colors.ANSI_RESET)
         print(get_margin() + day_row(date_num, cal))
-    print('\n' * 2)
-    print(colors.UP_LINE * 2, end='')
 
 def show_days_events(cal):
     prev_type = None

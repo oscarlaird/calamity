@@ -156,13 +156,13 @@ class Calamity:
                 self.display()
                 # get the next character and move to the corresponding node
                 c = getch()
+                if c not in node:
+                    node = command_tree.ROOT
                 if c in node:
                     node = node[c]
                     if isinstance(node, types.FunctionType):
                         node(self)
                         node = command_tree.ROOT
-                else:
-                    node = command_tree.ROOT
 
     def display(self):
         # DISPLAY
@@ -175,20 +175,26 @@ class Calamity:
             display.welcome()
             self.welcomed = True
         display.display_calendar(self)
-        if self.message:
-            print(self.message)
-            self.message = ''
+        print()
+        for line in (lines := self.message.splitlines()):
+            print(line.center(display.get_term_width()))
+        print('\n'*(3 - len(lines)), end='')
+        print(colors.UP_LINE * 3, end='', flush=True)
+        print(colors.CLEAR_TO_END, end='', flush=False)  # clear the last line when we next print
+        self.message = ''
 
     # MISCELLANEOUS COMMANDS
     def show_help(self):
-        print(colors.ALT_SCREEN + help.help);
-        getch();
+        print(colors.ALT_SCREEN)
+        for line in help.help.splitlines():
+            print(line.center(display.get_term_width()))
+        getch()
         print(colors.MAIN_SCREEN)
 
     def quit(self, save=True):
         if not save and questionary.confirm("Quit without saving (undo all changes)?", default=False).ask():
             self.session.rollback()
-            database.config.rollback()
+            database.config.session.rollback()
             print("Changes discarded.")
         self.session.commit()
         database.config.commit()
@@ -475,11 +481,7 @@ class Calamity:
         new_event = Event(date=(date or self.chosen_date), description=description, color=color, recurrence_parent=recurrence_parent,
                           type=type, start_time=start_time, end_time=end_time, code=code)
         self.session.add(new_event)
-        print(new_event.recurrence_parent)
-        print(new_event.color)
         self.session.flush()  # get the id of the new event
-        print(new_event.recurrence_parent)
-        print(new_event.color)
         self.chosen_event = new_event
         if type == "task" and code is None:
             self.edit_field(field='code')
@@ -491,48 +493,73 @@ class Calamity:
                 'end_time':          new_event.end_time,          'code':       new_event.code,
                 'recurrence_parent': new_event.recurrence_parent, 'color':      new_event.color}
 
+    def get_move_date(self):
+        help_text = ("[A-Z] move to a date by capital letter     A) move to the first date in view",
+                     "[0-9] move to a two digit date            14) move to the 14th of the month ",
+                     "+/-   move by day/week/month              2w) move forward two weeks        ",
+                     "                                         -1m) move back one month           ")
+        for line in help_text:
+            print(line.center(display.get_term_width()), end='' if line == help_text[-1] else '\n', flush=True)
+        c1 = getch()
+        english_delta, direction, n = None, 1, 1
+        # date by capital letter
+        if c1 in string.ascii_uppercase + '[\\]^_':
+            return self.from_date + ord(c1) - ord('A')
+        # two digit date
+        elif c1 in string.digits:
+            c2 = getch()
+            if c2.isdigit():
+                new_day = int(c1 + c2)
+                for date in range(self.from_date, self.from_date + display.NUM_DAYS):
+                    if datetime.date.fromordinal(date).day == new_day:
+                        return date
+            elif c2 in 'dwm':
+                n = int(c1)
+                english_delta = c2
+        # +/-
+        elif c1 in '+-':
+            direction = 1 if c1 == '+' else -1
+            first_digit = True
+            while True:
+                c = getch()
+                if c.isdigit():
+                    if first_digit:
+                        n = 0
+                        first_digit = False
+                    n = 10 * n + int(c)
+                elif c in 'dwm':
+                    english_delta = c
+                    break
+                else:
+                    return None  # invalid input
+        # d/w/m
+        elif c1 in 'dwm':
+            english_delta = c1
+        # get the target
+        if english_delta is not None:
+            if english_delta == 'd':
+                return self.chosen_date + n * direction
+            elif english_delta == 'w':
+                return self.chosen_date + 7 * n * direction
+            elif english_delta == 'm':
+                new_date = self.chosen_date
+                for _ in range(n):
+                    new_date = dateutils.add_month(new_date, back=(direction == -1))
+                return new_date
+
+
+
     def move_event(self, target=None, fail=False, group=False):
         if self.chosen_event is None:
             return
         if fail:
             return
-
+        # get the target
         if target is None:
-            # get the target
-            c1 = getch()
-            english_delta, direction = None, 1
-            # two-digit dates
-            if not group and c1 in ('0123'):
-                c2 = getch()
-                if c2.isdigit():
-                    new_day = int(c1 + c2)
-                    for date in range(self.from_date, self.from_date + display.NUM_DAYS):
-                        if datetime.date.fromordinal(date).day == new_day:
-                            target = date
-            # capital letters
-            elif not group and c1 in string.ascii_uppercase:
-                target = self.from_date + ord(c1) - ord('A')
-            # +/-
-            elif c1 in '+-':
-                direction = 1 if c1 == '+' else -1
-                english_delta = getch()
-            # d/w/m
-            elif c1 in 'wdm' + string.digits:
-                english_delta = c1
-
-            if english_delta is not None:
-                if english_delta == 'd':
-                    target = self.chosen_event.date + 1 * direction
-                elif english_delta == 'w':
-                    target = self.chosen_event.date + 7 * direction
-                elif english_delta == 'm':
-                    target = dateutils.add_month(self.chosen_event.date, back=(direction == -1))
-                elif english_delta.isdigit():
-                    target = self.chosen_event.date + int(english_delta) * direction
-
-        # set the target
-        if target is None:
-            return {'fail': True}
+            target = self.get_move_date()
+            # did we get a target?
+            if target is None:
+                return {'fail': True}
         self.postpone(group=group, delta=target - self.chosen_event.date)
         return {'target': target}
 

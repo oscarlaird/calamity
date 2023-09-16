@@ -8,6 +8,7 @@ ANSI_REVERSE = "\033[7m"
 CURSOR_OFF = "\033[?25l"
 CURSOR_ON = "\033[?25h"
 CLEAR_LINE = "\033[K"
+CLEAR_TO_END = "\033[0K"
 ANSI_COLOR_DICT = {
     "red": "\033[91m",
     "green": "\033[32m",

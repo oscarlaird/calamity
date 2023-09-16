@@ -1,8 +1,6 @@
 from string import ascii_uppercase, digits
 
-
 from calamity_calendar import database, display
-
 
 
 class TrieNode(dict):
@@ -11,20 +9,21 @@ class TrieNode(dict):
         super().__init__()
         self.message = message
 
+
 # COMMAND TRIE
 # PARENT NODES
-R = ROOT = TrieNode("?) HELP    e) EDIT    z) VIEW    g) GROUP")
-R['e'] = TrieNode("EDIT:   D) date    d) description    c) code      \n"
-                  "        s) start time    f) finish time    t) time\n")
-R['z'] = TrieNode("VIEW:    k) up    j) down    h) left    l) right\n"
-                  "         z) center    t) top    b) bottom       \n"
-                  "         0) toggle 12/24 hour    ?) toggle help \n")
-R['g'] = TrieNode("GROUP:  e) EDIT   r) repeat   x) delete    X) delete future    m) move    y) yank")
+R = ROOT = TrieNode("?) HELP     e) EDIT     z) VIEW     g) GROUP")
+R['e']   = TrieNode("   EDIT:    D) date     c) code     d) description      \n"
+                    "            t) time     s) start    f) finish           \n")
+R['z']   = TrieNode("   VIEW:    l) right    h) left     j) down     k) up   \n"
+                    "            z) center   b) bottom   t) top              \n")
+R['g']   = TrieNode("   GROUP:   e) EDIT     r) repeat   x) delete           \n"
+                    "            m) move     y) yank     X) delete future    \n")
 R['g']['e'] = TrieNode(message=R['e'].message)
-R['\x1b'] = TrieNode("ESC) quit")
+R['\x1b'] = TrieNode(message=R.message)
 R['\x1b']['['] = TrieNode()
 # CAPITAL LETTERS
-for c in ascii_uppercase:
+for c in ascii_uppercase + '[\\]^_`':
     R[c] = lambda self, c=c: setattr(self, 'chosen_date', self.from_date + ord(c) - ord('A'))
 # NUMBERS
 for c in digits[1:]:
@@ -87,12 +86,12 @@ R['.'] = lambda self: self.repeat()
 for key, event_type in zip('atc', ('appointment', 'task', 'chore')):
     R[key] = lambda self, event_type=event_type: self.checkpoint_wrapper(self.add_event, type=event_type)
 # COMMANDS (TRANSITIVE)
-cmds = {'-': 'prepone_one', '+' : 'postpone_one', '=': 'postpone_one',
-        ';' : 'cycle_color_forward', ',': 'cycle_color_backward', '~': 'toggle_type',
+cmds = {'-': 'prepone_one', '+': 'postpone_one', '=': 'postpone_one',
+        ';': 'cycle_color_forward', ',': 'cycle_color_backward', '~': 'toggle_type',
         'r': 'repeat_event', 'x': 'kill_event', 'm': 'move_event',
         'p': 'paste', 's': 'separate'}
 for key, func in cmds.items():
-    R[key] =     lambda self, func=func, group=False: self.checkpoint_wrapper(getattr(self, func), group=group)
+    R[key] = lambda self, func=func, group=False: self.checkpoint_wrapper(getattr(self, func), group=group)
     R['g'][key] = lambda self, func=func, group=True: self.checkpoint_wrapper(getattr(self, func), group=group)
 # edit
 for key, field in zip('Ddcsf', ('date', 'description', 'code', 'start_time', 'end_time')):
@@ -102,5 +101,7 @@ for key, field in zip('Ddcsf', ('date', 'description', 'code', 'start_time', 'en
 R['e']['t'] = lambda self: self.checkpoint_wrapper(self.edit_time)
 R['g']['t'] = lambda self: self.checkpoint_wrapper(self.edit_time, group=True)
 R['g']['e']['t'] = R['g']['t']
+# alias edit description
+R['d'] = R['e']['d']
 # delete future events
 R['g']['X'] = lambda self: self.checkpoint_wrapper(self.kill_future_events)

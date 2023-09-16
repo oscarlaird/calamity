@@ -9,27 +9,6 @@ from sqlalchemy.orm import sessionmaker
 
 from calamity_calendar import colors
 
-import logging
-
-# delete the log file
-"""
-open('sqlalchemy.log', 'w').close()
-logger = logging.getLogger('sqlalchemy')
-logger.setLevel(logging.INFO)
-#redirect to sqlachemy.log
-logger.addHandler(logging.FileHandler('sqlalchemy.log', mode='w'))
-"""
-
-# logging.basicConfig(filename='sqlalchemy.log', level=logging.INFO)
-
-# Create the events table
-# the database file will live in ~/.local/share/calamity/events.db
-DB_PATH = os.path.join(os.path.expanduser('~'), '.local', 'share', 'calamity', 'events.db')
-engine = create_engine(f'sqlite:///{DB_PATH}')
-
-# Create a session
-Session = sessionmaker(bind=engine)
-
 # Declare the base
 Base = declarative_base()
 
@@ -93,14 +72,15 @@ class Config(Base):
 
 class ConfigDict:
 
-    def __init__(self):
+    def __init__(self, defaults):
+        self.defaults = defaults
         self.session = Session()
         self._dict = {row.key: row for row in self.session.query(Config).all()}
         self.__contains__ = self._dict.__contains__
         self.init_defaults()
 
     def init_defaults(self):
-        for key, value in default_config.items():
+        for key, value in self.defaults.items():
             if key not in self._dict:
                 self._dict[key] = Config(key=key)  # create a new record
                 self[key] = value
@@ -113,17 +93,11 @@ class ConfigDict:
         return json.loads(self._dict[key].value)  # self._dict[key] is a Config object (sql record)
 
     def __setitem__(self, key, value):
-        assert key in default_config
+        assert key in self.defaults
         self._dict[key].value = json.dumps(value)  # self._dict[key] is a Config object (sql record)
 
     def __repr__(self):
         return repr({key: self[key] for key in self._dict.keys()})
-
-
-default_config = {'military_time': False, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db', 'ROT13': False, 'show_help': True, 'color': 'cyan'}
-config = ConfigDict()
-
-
 
 
 def fetch_events(date, session):
@@ -140,5 +114,21 @@ def fetch_chores(date, session):
 
 
 
-# Create the table
+# Create the file if it doesn't exist
+# the database file will live in ~/.local/share/calamity/events.db
+DB_PATH = os.path.join(os.path.expanduser('~'), '.local', 'share', 'calamity', 'events.db')
+if not os.path.exists(os.path.dirname(DB_PATH)):
+    os.makedirs(os.path.dirname(DB_PATH))
+
+# Connect to the database
+engine = create_engine(f'sqlite:///{DB_PATH}')
+
+# Create the tables if they don't exist
 Base.metadata.create_all(engine)
+
+# Create a session factory
+Session = sessionmaker(bind=engine)
+
+# Create globally shared config object
+default_config = {'military_time': False, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db', 'ROT13': False, 'show_help': True, 'color': 'cyan'}
+config = ConfigDict(default_config)
