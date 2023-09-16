@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "calamity_calendar"
-version = "0.1.4"
+version = "0.1.5"
 description = ""
 authors = ["Oscar Laird <olaird25@gmail.com>"]
 readme = "README.md"
