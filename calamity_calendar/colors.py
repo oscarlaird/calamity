@@ -1,6 +1,6 @@
 COLORS = ["red", "green", "yellow", "magenta", "cyan", "white"]
 CYCLE_DICT = {color: COLORS[(i + 1) % len(COLORS)] for i, color in enumerate(COLORS)}
-CYCLE_DICT_BACKWORDS = {color: COLORS[(i - 1) % len(COLORS)] for i, color in enumerate(COLORS)}
+CYCLE_DICT_BACKWARDS = {color: COLORS[(i - 1) % len(COLORS)] for i, color in enumerate(COLORS)}
 
 ANSI_RESET = "\033[0m"
 ANSI_BOLD = "\033[1m"

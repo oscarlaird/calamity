@@ -13,12 +13,12 @@ class TrieNode(dict):
 # COMMAND TRIE
 # PARENT NODES
 R = ROOT = TrieNode("?) HELP     e) EDIT     z) VIEW     g) GROUP")
-R['e']   = TrieNode("   EDIT:    D) date     c) code     d) description      \n"
-                    "            t) time     s) start    f) finish           \n")
-R['z']   = TrieNode("   VIEW:    l) right    h) left     j) down     k) up   \n"
-                    "            z) center   b) bottom   t) top              \n")
-R['g']   = TrieNode("   GROUP:   e) EDIT     r) repeat   x) delete           \n"
-                    "            m) move     y) yank     X) delete future    \n")
+R['e'] = TrieNode("   EDIT:    D) date     c) code     d) description      \n"
+                  "            t) time     s) start    f) finish           \n")
+R['z'] = TrieNode("   VIEW:    l) right    h) left     j) down     k) up   \n"
+                  "            z) center   b) bottom   t) top              \n")
+R['g'] = TrieNode("   GROUP:   e) EDIT     r) repeat   x) delete           \n"
+                  "            m) move     y) yank     X) delete future    \n")
 R['g']['e'] = TrieNode(message=R['e'].message)
 R['\x1b'] = TrieNode(message=R.message)
 R['\x1b']['['] = TrieNode()
@@ -53,8 +53,8 @@ R['y'] = lambda self: self.yank()
 R['g']['g'] = lambda self: setattr(self, 'chosen_date', self.today)
 R['g']['y'] = lambda self: self.yank(group=True)
 R['z']['t'] = lambda self: setattr(self, 'from_date', self.chosen_date)
-R['z']['b'] = lambda self: setattr(self, 'from_date', self.chosen_date - display.NUM_DAYS + 1)
-R['z']['z'] = lambda self: setattr(self, 'from_date', self.chosen_date - display.NUM_DAYS // 2)
+R['z']['b'] = lambda self: setattr(self, 'from_date', self.chosen_date - display.get_num_days() + 1)
+R['z']['z'] = lambda self: setattr(self, 'from_date', self.chosen_date - display.get_num_days() // 2)
 R['z']['k'] = lambda self: setattr(self, 'from_date', self.from_date - 1)
 R['z']['j'] = lambda self: setattr(self, 'from_date', self.from_date + 1)
 # display config
@@ -69,12 +69,12 @@ R['\x1b']['[']['D'] = R['z']['h']
 R['\x1b']['[']['C'] = R['z']['l']
 
 # MISC_COMMANDS
-# help
+# HELP_TEXT
 R['?'] = lambda self: self.show_help()
 # quit
 R['q'] = lambda self: self.quit()  # TODO do I really need a lambda here?
 R['\x1b']['\x1b'] = R['q']
-R['\x03'] = lambda self: self.quit(save=False)
+R['\x03'] = lambda self: self.quit(ask=True)
 # backup
 R['v'] = lambda self: self.make_backup()
 # undo/redo

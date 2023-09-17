@@ -14,62 +14,108 @@ Install Calamity via pip:
 
 Your calendar is stored in `~/.local/share/calamity/events.db`.
 
-## Overview
-
-Calamity allows you to schedule three types of events:
-
-- **Appointments**: Events with a start and end time.
-- **Tasks**: Events with a deadline, like homework.
-- **Chores**: Events meant to be performed on the day they're scheduled, such as hygiene tasks.
-
-Events are selected using a coordinate system. Days are chosen with capital letters `A-Z`, and specific events within those days are chosen with numbers `1-9`.
-
-Events can also be repeated daily, weekly, or monthly. Repeated events generally share characteristics like description, color, and time.
-
 ## Usage
 
-### Event Creation
-- **Appointment**: `a`
-- **Task**: `t`
-- **Chore**: `c`
+- **Three kinds of events**: appointments, tasks, and chores.
+    - **Appointments**: start time and end time.
+    - **Tasks**: have a deadline (e.g. homework).
+    - **Chores**: performed on the day they're scheduled (e.g. hygiene)
 
-### Selecting a Day
-- **Choose by letter**: `A-Z`
-- **Move Down**: `j`
-- **Move Up**: `k`
-- **Previous Month**: `<`
-- **Next Month**: `>`
-- **Previous Week**: `b`
-- **Next Week**: `w`
-- **Jump to today**: `gg`
+- **Selection**:
+    - **Coordinate system**: Day (`A-Z`), Event (`1-9`).
+    - **Vim motions** (e.g. `j`, `k`, `h`, `l`) to navigate.
 
-### Selecting an Event
-- **Choose by number**: `1-9`
-- **Move Right**: `l`
-- **Move Left**: `h`
-- **Cycle through Chores**: `TAB`
-- **Cycle Appointments**: `SPC`
-- **Cycle Tasks**: `RET`
-- **Next Occurrence of Repeated Event**: `n`
-- **Previous Occurrence of Repeated Event**: `p`
+- **Repetitions (Groups)**:
+    - `r` Create repetitions. (`r` followed by 7+13 creates 13 weekly repetitions.)
+    - Individual events are edited with with the `e` prefix.
+    - Entire repetition groups are edited with the `g` prefix.
 
-### Editing an Event
-- **Move Date**: `m`
-- **Edit Description**: `d`
-- **Edit Time (only for appointments)**: `i`
-- **Edit Code (only for tasks)**: `o`
-- **Cycle Color**: `;`
-- **Cycle Color Backwards**: `,`
-- **Delete**: `x`
-- **Set Repetition**: `r`
-- **Separate Event from its Repetition Group**: `s`
-- **Duplicate Event**: `y`
 
-### Miscellaneous Commands
-- **Help**: `?`
-- **Undo**: `u`
-- **Redo**: `CTRL-R`
-- **Scroll Selected Day to Top/Middle/Bottom of View**: `zt`, `zz`, `zb`
-- **Quit**: `ESC` or `q`
+### New Event
+| Command | Description |
+| ------- | ----------- |
+| `a` | Appointment |
+| `t` | Task |
+| `c` | Chore |
 
-Enjoy scheduling with Calamity!
+### Selection
+| Command | Description |
+|---------| ----------- |
+| `A-Z`     | Day |
+| `1-9`     | Event |
+| `j  `     | Down |
+| `k  `     | Up |
+| `l  `     | Right (Event) |
+| `h  `     | Left (Event) |
+| `\> `     | Next month |
+| `<  `     | Previous month |
+| `w  `     | Next week |
+| `b  `     | Previous week |
+| `TAB`     | Next chore |
+| `SPC`     | Next appointment |
+| `RET`     | Next task |
+| `gg `     | Jump to today |
+
+### Edit
+| Edit Event | Edit Repetition Group | Description |
+|----------|-----------------------|-----------------------------------|
+| `eD`       | `N/A`                  | Edit date                         |
+| `ed`       | `gd `                  | Edit description                  |
+| `ec`       | `gc `                  | Edit code (task)                  |
+| `es`       | `gs `                  | Edit start time (appointment)     |
+| `ef`       | `gf `                  | Edit finish time (appointment)    |
+| `et`       | `gt `                  | Edit time (appointment)           |
+| `; `       | `g; `                   | Cycle color forwards              |
+| `, `       | `g, `                   | Cycle color backwards             |
+| `+ `       | `g+ `                   | Postpone one day                  |
+| `- `       | `g- `                   | Prepone one day                   |
+| `x `       | `gx `                   | Delete event                      |
+| `r `       | `gr `                   | Repeat event                      |
+| `m `       | `gm `                   | Move event                        |
+| `~ `       | `g~ `                   | Toggle chore / task               |
+| `gX`       | `N/A`                | Kill future repetitions           |
+
+### Undo
+| Command | Description |
+| ------- | ----------- |
+| `u` | Undo |
+| `CTRL-R` | Redo |
+| `.` | Repeat last action |
+
+
+### Search
+| Command | Description |
+| ------- | ----------- |
+| `/` | Search |
+| `n` | Next match |
+| `N` | Previous match |
+| `*` | Next repetition |
+| `#` | Previous repetition |
+
+### Miscellaneous
+| Command | Description                          |
+| ------- |--------------------------------------|
+| `y` | Yank event                         |
+| `gy` | Yank repetition group              |
+| `p `| Paste yanked event/group             |
+| `s `| Separate event from repetition group |
+| `v `| Backup calendar                      |
+| `q `| Quit                                 |
+
+### View
+| Command | Description |
+| ------- | ----------- |
+| `zk` | Up |
+| `zj` | Down |
+| `zh` | Left |
+| `zl` | Right |
+| `zz` | Center |
+| `zt` | Top |
+| `zb` | Bottom |
+| `z0` | Toggle 12/24 hour |
+| `z?` | Toggle help visibility |
+| `g!` | Toggle ROT13 encryption |
+
+---
+
+

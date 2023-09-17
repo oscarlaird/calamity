@@ -3,11 +3,12 @@ import os
 import types
 import string
 import datetime
+import signal
 
 import questionary
 import sqlalchemy
 
-from calamity_calendar import display, database, colors, help, dateutils, command_tree
+from calamity_calendar import display, database, colors, help, dateutils, command_tree, pager
 from calamity_calendar.validators import DateValidator, CodeValidator, TimeValidator, RepetitionValidator
 from calamity_calendar.database import Event
 from calamity_calendar.getch import getch
@@ -63,8 +64,8 @@ class Calamity:
             old_chore_idx, old_task_idx = self.chore_idx, self.task_idx,
             old_appt_start, old_appt_end = self.chosen_event.start_time, self.chosen_event.end_time
         # fix the window
-        if self.from_date + display.NUM_DAYS <= self.chosen_date:
-            self.from_date = self.chosen_date - display.NUM_DAYS + 1
+        if self.from_date + display.get_num_days() <= self.chosen_date:
+            self.from_date = self.chosen_date - display.get_num_days() + 1
         elif self.chosen_date < self.from_date:
             self.from_date = self.chosen_date
         # set the chosen date and re-fetch the list of events
@@ -82,7 +83,7 @@ class Calamity:
                 for event in self.appointments:
                     # set if we start before or during the event (i.e. start <= end)
                     # if still None, set
-                    if (event.start_time < old_appt_end):
+                    if event.start_time < old_appt_end:
                         self.chosen_event = event
                     elif self.chosen_event is None:
                         self.chosen_event = event
@@ -111,7 +112,8 @@ class Calamity:
 
     @task_idx.setter
     def task_idx(self, idx):
-        self.chosen_event_idx = len(self.appointments) + idx if idx < len(self.tasks) else len(self.appointments) + len(self.tasks) - 1 if self.tasks else None
+        self.chosen_event_idx = len(self.appointments) + idx if idx < len(self.tasks) else (
+                len(self.appointments) + len(self.tasks) - 1) if self.tasks else None
 
     @property
     def appointment_idx(self):
@@ -121,7 +123,8 @@ class Calamity:
 
     @appointment_idx.setter
     def appointment_idx(self, idx):
-        self.chosen_event_idx = idx if idx < len(self.appointments) else len(self.appointments) - 1 if self.appointments else None
+        self.chosen_event_idx = idx if idx < len(self.appointments) else len(
+            self.appointments) - 1 if self.appointments else None
 
     @property
     def chore_idx(self):
@@ -132,7 +135,8 @@ class Calamity:
     @chore_idx.setter
     def chore_idx(self, idx):
         zero = len(self.appointments) + len(self.tasks)
-        self.chosen_event_idx = zero + idx if idx < len(self.chores) else (zero + len(self.chores) - 1) if self.chores else None
+        self.chosen_event_idx = zero + idx if idx < len(self.chores) else (
+                zero + len(self.chores) - 1) if self.chores else None
 
     def idx_of(self, event):
         # get the index of event in the list of events
@@ -147,58 +151,51 @@ class Calamity:
     def main_loop(self):
         self.session = database.Session()
         self.session.execute(sqlalchemy.text(f'SAVEPOINT SP_0'))
-        with self.session:
-            node = command_tree.ROOT
-            while True:
-                # display
-                if isinstance(node, command_tree.TrieNode) and database.config['show_help']:
-                    self.message = node.message
-                self.display()
-                # get the next character and move to the corresponding node
-                c = getch()
-                if c not in node:
+        node = command_tree.ROOT
+        while True:
+            # display
+            if isinstance(node, command_tree.TrieNode) and database.config['show_help']:
+                self.message = node.message
+            self.display()
+            # get the next character and move to the corresponding node
+            # TODO terminal resized or refreshed from another instance of calamity
+            c = getch()
+            if c not in node:
+                node = command_tree.ROOT
+            if c in node:
+                node = node[c]
+                if isinstance(node, types.FunctionType):
+                    node(self)
                     node = command_tree.ROOT
-                if c in node:
-                    node = node[c]
-                    if isinstance(node, types.FunctionType):
-                        node(self)
-                        node = command_tree.ROOT
 
     def display(self):
-        # DISPLAY
-        print(colors.CLEAR_SCREEN + colors.CURSOR_OFF + colors.WRAP_OFF, end='')
+        # refresh data
         self.chosen_event = self.chosen_event  # follow event to a new date
-        self.chosen_date = self.chosen_date  # update events
-        if self.welcomed:  # hide the events on the first screen
-            display.show_days_events(self)
-        elif not self.welcomed:
-            display.welcome()
-            self.welcomed = True
-        display.display_calendar(self)
-        print()
-        for line in (lines := self.message.splitlines()):
-            print(line.center(display.get_term_width()))
-        print('\n'*(3 - len(lines)), end='')
-        print(colors.UP_LINE * 3, end='', flush=True)
-        print(colors.CLEAR_TO_END, end='', flush=False)  # clear the last line when we next print
+        self.chosen_date = self.chosen_date  # update list of events on that date
+        # display
+        display.show_all(self)
         self.message = ''
 
     # MISCELLANEOUS COMMANDS
     def show_help(self):
-        print(colors.ALT_SCREEN)
-        for line in help.help.splitlines():
-            print(line.center(display.get_term_width()))
-        getch()
-        print(colors.MAIN_SCREEN)
+        pager.pager(help.HELP_TEXT, center=True)
 
-    def quit(self, save=True):
-        if not save and questionary.confirm("Quit without saving (undo all changes)?", default=False).ask():
+    def quit(self, save=True, ask=False):
+        if not save or (ask and questionary.confirm("Quit without saving (undo all changes)?", default=False).ask()):
             self.session.rollback()
             database.config.session.rollback()
             print("Changes discarded.")
         self.session.commit()
         database.config.commit()
+        print(colors.CLEAR_TO_END + colors.CURSOR_ON + colors.WRAP_ON + colors.RESET, end='', flush=True)
         exit()
+
+    # quit on signal
+    def sig_quit(self, signum, frame):
+        self.quit()
+
+    def sig_quit_without_saving(self, signum, frame):
+        self.quit(save=False)
 
     def make_backup(self):
         # make a backup of the database
@@ -432,15 +429,18 @@ class Calamity:
         if self.chosen_event is None:
             return
         old_color = self.chosen_event.color
-        new_color = colors.CYCLE_DICT[old_color] if not backwards else colors.CYCLE_DICT_BACKWORDS[old_color]
+        new_color = colors.CYCLE_DICT[old_color] if not backwards else colors.CYCLE_DICT_BACKWARDS[old_color]
         self.chosen_event.color = new_color
         database.config['color'] = new_color
         if group and self.chosen_event.recurrence_parent is not None:
             self.session.query(Event).filter_by(recurrence_parent=self.chosen_event.recurrence_parent).update(
                 {Event.color: new_color})
 
-    cycle_color_forward = lambda self, group=False: self.cycle_color(group=group, backwards=False)
-    cycle_color_backward = lambda self, group=False: self.cycle_color(group=group, backwards=True)
+    def cycle_color_forward(self, group=False):
+        self.cycle_color(group=group, backwards=False)
+
+    def cycle_color_backward(self, group=False):
+        self.cycle_color(group=group, backwards=True)
 
     def toggle_type(self, group=False):
         if self.chosen_event is None or self.chosen_event.type not in ('task', 'chore'):
@@ -478,7 +478,8 @@ class Calamity:
     def add_event(self, date=None, description=None, color=None, recurrence_parent=None, type=None, start_time=None,
                   end_time=None, code=None):
         # TODO use an event dict so you aren't writing out column names
-        new_event = Event(date=(date or self.chosen_date), description=description, color=color, recurrence_parent=recurrence_parent,
+        new_event = Event(date=(date or self.chosen_date), description=description, color=color,
+                          recurrence_parent=recurrence_parent,
                           type=type, start_time=start_time, end_time=end_time, code=code)
         self.session.add(new_event)
         self.session.flush()  # get the id of the new event
@@ -489,9 +490,9 @@ class Calamity:
             self.edit_time()
         if description is None:
             self.edit_field(field='description')
-        return {'description':       new_event.description,       'start_time': new_event.start_time,
-                'end_time':          new_event.end_time,          'code':       new_event.code,
-                'recurrence_parent': new_event.recurrence_parent, 'color':      new_event.color}
+        return {'description': new_event.description, 'start_time': new_event.start_time,
+                'end_time': new_event.end_time, 'code': new_event.code,
+                'recurrence_parent': new_event.recurrence_parent, 'color': new_event.color}
 
     def get_move_date(self):
         help_text = ("[A-Z] move to a date by capital letter     A) move to the first date in view",
@@ -510,7 +511,7 @@ class Calamity:
             c2 = getch()
             if c2.isdigit():
                 new_day = int(c1 + c2)
-                for date in range(self.from_date, self.from_date + display.NUM_DAYS):
+                for date in range(self.from_date, self.from_date + display.get_num_days()):
                     if datetime.date.fromordinal(date).day == new_day:
                         return date
             elif c2 in 'dwm':
@@ -547,8 +548,6 @@ class Calamity:
                     new_date = dateutils.add_month(new_date, back=(direction == -1))
                 return new_date
 
-
-
     def move_event(self, target=None, fail=False, group=False):
         if self.chosen_event is None:
             return
@@ -565,7 +564,11 @@ class Calamity:
 
 
 def run():
-    Calamity().main_loop()
+    cal = Calamity()
+    signal.signal(signal.SIGTERM, cal.sig_quit)
+    signal.signal(signal.SIGUSR1, cal.sig_quit)
+    signal.signal(signal.SIGUSR2, cal.sig_quit_without_saving)
+    cal.main_loop()
 
 
 if __name__ == '__main__':

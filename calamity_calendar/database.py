@@ -2,6 +2,11 @@ import sqlalchemy
 import datetime
 import os
 import json
+import time
+import subprocess
+import re
+
+import questionary
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -12,6 +17,7 @@ from calamity_calendar import colors
 # Declare the base
 Base = declarative_base()
 
+
 # Declare the table of events
 class Event(Base):
     __tablename__ = 'events'
@@ -20,8 +26,9 @@ class Event(Base):
     date = sqlalchemy.Column(sqlalchemy.Integer, default=datetime.date.today().toordinal())  # stored as julian date
     description = sqlalchemy.Column(sqlalchemy.String, default="")
     color = sqlalchemy.Column(sqlalchemy.String, default=None)
-    recurrence_parent = sqlalchemy.Column(sqlalchemy.Integer) # id of parent event
-    type = sqlalchemy.Column(sqlalchemy.String, default='task') # type of event, e.g. appointment, task, etc. # enforce not NULL
+    recurrence_parent = sqlalchemy.Column(sqlalchemy.Integer)  # id of parent event
+    type = sqlalchemy.Column(sqlalchemy.String,
+                             default='task')  # type of event, e.g. appointment, task, etc. # enforce not NULL
     # Appointments
     start_time = sqlalchemy.Column(sqlalchemy.Integer)  # stored as minutes since midnight
     end_time = sqlalchemy.Column(sqlalchemy.Integer)  # stored as minutes since midnight
@@ -103,15 +110,17 @@ class ConfigDict:
 def fetch_events(date, session):
     return fetch_appointments(date, session), fetch_tasks(date, session), fetch_chores(date, session)
 
+
 def fetch_appointments(date, session):
     return session.query(Event).filter_by(date=date, type="appointment").order_by(Event.start_time).all()
+
 
 def fetch_tasks(date, session):
     return session.query(Event).filter_by(date=date, type="task").all()
 
+
 def fetch_chores(date, session):
     return session.query(Event).filter_by(date=date, type="chore").all()
-
 
 
 # Create the file if it doesn't exist
@@ -120,8 +129,65 @@ DB_PATH = os.path.join(os.path.expanduser('~'), '.local', 'share', 'calamity', '
 if not os.path.exists(os.path.dirname(DB_PATH)):
     os.makedirs(os.path.dirname(DB_PATH))
 
-# Connect to the database
-engine = create_engine(f'sqlite:///{DB_PATH}')
+
+def is_locked(engine):
+    try:
+        with engine.connect() as connection:
+            trans = connection.begin()
+            connection.execute(sqlalchemy.text("UPDATE config SET value = '1' WHERE key = 'check_lock'"))
+            trans.commit()
+        return False
+    except sqlalchemy.exc.OperationalError:
+        return True
+
+
+# pgrep the other instance of calamity
+def get_other_instance_pids():
+    output = subprocess.check_output(['pgrep', '-f', 'calamity_calendar'])
+    output = output.decode('utf-8')
+    pids = re.findall(r'\d+', output)
+    pids = [int(pid) for pid in pids]
+    pids.remove(os.getpid())
+    return pids
+
+
+# Connect to the database if nobody else is using it
+engine = create_engine(f'sqlite:///{DB_PATH}', connect_args={'timeout': 0})
+if is_locked(engine):
+    if pids := get_other_instance_pids():
+        assert len(pids) == 1, f"Multiple instances of calamity are running (pids {pids})."
+        if questionary.confirm(f"Calamity is already running (pid {pids[0]}). Kill it?", default=True).ask():
+            # ask the other instance to save changes
+            if questionary.confirm("Save changes from the other instance?", default=True).ask():
+                print("Saving changes...")
+                for pid in pids:
+                    os.kill(pid, 10)  # SIGUSR1, quit with save
+            else:
+                print("Discarding changes...")
+                for pid in pids:
+                    os.kill(pid, 12)  # SIGUSR2, quit without save
+            # wait 1s for the other instance to exit
+            for _ in range(100):
+                time.sleep(0.01)
+                if not get_other_instance_pids():
+                    break
+            # make sure the other instance exited
+            if get_other_instance_pids():
+                print("Other instance failed to exit. Exiting.")
+                exit(1)
+            # try to connect again
+            if is_locked(engine):
+                print("Database is still locked. Exiting.")
+                exit(1)
+        # if the user doesn't want to kill the other instance, exit
+        else:
+            print("Database is locked. Exiting.")
+            exit(1)
+    # if there is no other instance of calamity running, the database is corrupted
+    else:
+        print(
+            "Database is locked, but no other instance of calamity is running. Your database may be corrupted. Exiting.")
+        exit(1)
 
 # Create the tables if they don't exist
 Base.metadata.create_all(engine)
@@ -130,5 +196,6 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 # Create globally shared config object
-default_config = {'military_time': False, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db', 'ROT13': False, 'show_help': True, 'color': 'cyan'}
+default_config = {'military_time': False, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db',
+                  'ROT13': False, 'show_help': True, 'color': 'cyan', 'check_lock': 0}
 config = ConfigDict(default_config)

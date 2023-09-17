@@ -1,10 +1,12 @@
-""""
+"""
 Get a single character from stdin, without waiting for a newline.
 If the terminal is resized, getch() will return None.
 """
 import sys
 import tty
 import termios
+
+
 # import signal
 # import select
 
