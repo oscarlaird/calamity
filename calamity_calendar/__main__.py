@@ -176,6 +176,9 @@ class Calamity:
         display.show_all(self)
         self.message = ''
 
+    def redraw(self, signum=None, frame=None):
+        display.show_all(self)
+
     # MISCELLANEOUS COMMANDS
     def show_help(self):
         pager.pager(help.HELP_TEXT, center=True)
@@ -565,9 +568,13 @@ class Calamity:
 
 def run():
     cal = Calamity()
+    # polite quit request
     signal.signal(signal.SIGTERM, cal.sig_quit)
+    # listen to interrupt from another instance
     signal.signal(signal.SIGUSR1, cal.sig_quit)
     signal.signal(signal.SIGUSR2, cal.sig_quit_without_saving)
+    # listen to terminal resize
+    # signal.signal(signal.SIGWINCH, cal.redraw)
     cal.main_loop()
 
 

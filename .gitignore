@@ -8,5 +8,6 @@ misc.xml
 __pycache__/
 
 # poetry
-poetry.lock
 calamity-calendar-_etf-Of3-py3.11
+poetry.lock
+envs.toml

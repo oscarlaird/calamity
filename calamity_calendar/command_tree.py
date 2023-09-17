@@ -22,6 +22,7 @@ R['g'] = TrieNode("   GROUP:   e) EDIT     r) repeat   x) delete           \n"
 R['g']['e'] = TrieNode(message=R['e'].message)
 R['\x1b'] = TrieNode(message=R.message)
 R['\x1b']['['] = TrieNode()
+parent_nodes = (R, R['e'], R['z'], R['g'], R['g']['e'], R['\x1b'], R['\x1b']['['])
 # CAPITAL LETTERS
 for c in ascii_uppercase + '[\\]^_`':
     R[c] = lambda self, c=c: setattr(self, 'chosen_date', self.from_date + ord(c) - ord('A'))
@@ -105,3 +106,6 @@ R['g']['e']['t'] = R['g']['t']
 R['d'] = R['e']['d']
 # delete future events
 R['g']['X'] = lambda self: self.checkpoint_wrapper(self.kill_future_events)
+# TERMINAL RESIZE
+for pn in parent_nodes:
+    pn['RESIZE'] = lambda self: self.redraw()
