@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "calamity_calendar"
-version = "0.1.8"
+version = "0.1.9"
 description = ""
 authors = ["Oscar Laird <olaird25@gmail.com>"]
 readme = "README.md"
@@ -23,4 +23,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-calamity = "calamity_calendar.calamity_runner:main"
+# calamity = "calamity_calendar.calamity_runner:main"
+calamity = "calamity_calendar:run"

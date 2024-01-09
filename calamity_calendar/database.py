@@ -132,6 +132,9 @@ if not os.path.exists(os.path.dirname(DB_PATH)):
 
 def is_locked(engine):
     try:
+        # Create the tables if they don't exist
+        Base.metadata.create_all(engine)
+        # Try to set check_lock=1 as a test of whether we can acquire a write lock
         with engine.connect() as connection:
             trans = connection.begin()
             connection.execute(sqlalchemy.text("UPDATE config SET value = '1' WHERE key = 'check_lock'"))
@@ -185,8 +188,7 @@ if is_locked(engine):
             exit(1)
     # if there is no other instance of calamity running, the database is corrupted
     else:
-        print(
-            "Database is locked, but no other instance of calamity is running. Your database may be corrupted. Exiting.")
+        print( "Database is locked, but no other instance of calamity is running. Your database may be corrupted. Exiting.")
         exit(1)
 
 # Create the tables if they don't exist
