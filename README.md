@@ -7,9 +7,9 @@
 ## Installation
 
 Install Calamity via pip:
-```
->>> pip install calamity_calendar
->>> calamity
+```bash
+pip install calamity_calendar
+calamity
 ```
 
 Your calendar is stored in `~/.local/share/calamity/events.db`.
@@ -114,7 +114,7 @@ Your calendar is stored in `~/.local/share/calamity/events.db`.
 | `zb` | Bottom |
 | `z0` | Toggle 12/24 hour |
 | `z?` | Toggle help visibility |
-| `g!` | Toggle ROT13 encryption |
+| `g?` | Toggle ROT13 encryption |
 
 ---
 

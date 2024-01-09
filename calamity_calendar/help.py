@@ -34,7 +34,7 @@ HELP_TEXT = """\
 │ <) Previous month         │   ;) Cycle color forwards               │  zb) Bottom                   │
 │ >) Next month             │   ,) Cycle color backwards              │  z0) Toggle 12/24 hour        │
 │ b) Previous week          │   +) Postpone one day                   │  z?) Toggle help visibility   │
-│ w) Next week              │   -) Prepone one day                    │  g!) Toggle ROT13 encryption  │
+│ w) Next week              │   -) Prepone one day                    │  g?) Toggle ROT13 encryption  │
 │ TAB) Next chore           │   x) Delete event                       │                               │
 │ SPC) Next appointment     │   r) Repeat event                       ├─────────── Undo ──────────────┤
 │ RET) Next task            │   m) Move event                         │  u) Undo                      │
