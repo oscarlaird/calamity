@@ -1,3 +1,4 @@
+
 import shutil
 import os
 import types
@@ -5,13 +6,13 @@ import string
 import datetime
 import signal
 
-import questionary
+# import questionary
 import sqlalchemy
 
-from calamity_calendar import display, database, colors, help, dateutils, command_tree, pager
-from calamity_calendar.validators import DateValidator, CodeValidator, TimeValidator, RepetitionValidator
+from calamity_calendar import display, database, colors, help, dateutils, command_tree # pager
+# from calamity_calendar.validators import DateValidator, CodeValidator, TimeValidator, RepetitionValidator
 from calamity_calendar.database import Event
-from calamity_calendar.getch import getch
+# from calamity_calendar.getch import getch
 
 
 class Calamity:
@@ -31,15 +32,17 @@ class Calamity:
         # search
         self.search = ''
         self.matching = None
-        # message
-        self.welcomed = False
-        self.error = None
-        self.message = ''
         # window
         self.from_date = self.today
         # yank/paste
         self.yank_list = []
         self.yank_date = self.today
+        # node in the command tree
+        self.node = command_tree.ROOT
+        # message
+        self.welcomed = False
+        self.error = None
+        self.message = self.node.message
 
     # define a setter for chosen_event (we defined the getter elsewhere)
     @property
@@ -148,25 +151,25 @@ class Calamity:
     def choose_event(self, event):
         self.chosen_event = event
 
+    def main_loop_callback(self, c):
+        if c not in self.node:
+            self.node = command_tree.ROOT
+        if c in self.node:
+            self.node = self.node[c]
+            if isinstance(self.node, types.FunctionType):
+                self.node(self)
+                self.node = command_tree.ROOT
+        if isinstance(self.node, command_tree.TrieNode) and database.config['show_help']:
+            self.message = self.node.message
+
     def main_loop(self):
-        self.session = database.Session()
-        self.session.execute(sqlalchemy.text(f'SAVEPOINT SP_0'))
-        node = command_tree.ROOT
+        self.display()
         while True:
-            # display
-            if isinstance(node, command_tree.TrieNode) and database.config['show_help']:
-                self.message = node.message
-            self.display()
-            # get the next character and move to the corresponding node
-            # TODO terminal resized or refreshed from another instance of calamity
             c = getch()
-            if c not in node:
-                node = command_tree.ROOT
-            if c in node:
-                node = node[c]
-                if isinstance(node, types.FunctionType):
-                    node(self)
-                    node = command_tree.ROOT
+            self.main_loop_callback(c)
+            self.display()
+
+
 
     def display(self):
         # refresh data

@@ -3,7 +3,7 @@ import datetime
 # to get the width of the terminal, use shutil.get_terminal_size().columns
 import shutil
 # import signal
-import wcwidth
+# import wcwidth
 
 from calamity_calendar import colors, database
 
@@ -172,6 +172,7 @@ welcomed = False
 def show_all(cal):
     print(colors.CLEAR_SCREEN + colors.CURSOR_OFF + colors.WRAP_OFF, end='', file=buffer)
     global welcomed
+    print(f'called show all welcomed={welcomed}', file=sys.stderr)
     if welcomed:
         show_days_events(cal)
     elif not welcomed:
@@ -183,7 +184,7 @@ def show_all(cal):
         print(line.center(get_term_width()), file=buffer)
     print('\n' * (3 - len(lines)), end='', file=buffer)
     buffer.flush()  # print the buffer
-    print(colors.UP_LINE * 3 + colors.CLEAR_TO_END, end='')  # clear the last line when we next print
+    # print(colors.UP_LINE * 3 + colors.CLEAR_TO_END, end='')  # clear the last line when we next print (for questionary)
 
 
 rot13_trans = str.maketrans(

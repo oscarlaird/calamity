@@ -6,7 +6,6 @@ import time
 import subprocess
 import re
 
-import questionary
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -108,18 +107,22 @@ class ConfigDict:
 
 
 def fetch_events(date, session):
+    return ([], [], [])
     return fetch_appointments(date, session), fetch_tasks(date, session), fetch_chores(date, session)
 
 
 def fetch_appointments(date, session):
+    return []
     return session.query(Event).filter_by(date=date, type="appointment").order_by(Event.start_time).all()
 
 
 def fetch_tasks(date, session):
+    return []
     return session.query(Event).filter_by(date=date, type="task").all()
 
 
 def fetch_chores(date, session):
+    return []
     return session.query(Event).filter_by(date=date, type="chore").all()
 
 
@@ -154,9 +157,11 @@ def get_other_instance_pids():
     return pids
 
 
+"""
 # Connect to the database if nobody else is using it
 engine = create_engine(f'sqlite:///{DB_PATH}', connect_args={'timeout': 0})
 if is_locked(engine):
+    import questionary
     if pids := get_other_instance_pids():
         assert len(pids) == 1, f"Multiple instances of calamity are running (pids {pids})."
         if questionary.confirm(f"Calamity is already running (pid {pids[0]}). Kill it?", default=True).ask():
@@ -198,6 +203,8 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 # Create globally shared config object
+config = ConfigDict(default_config)
+"""
 default_config = {'military_time': False, 'timezone': 0, 'start_hour': 8, 'backup_location': '~/events_backup.db',
                   'ROT13': False, 'show_help': True, 'color': 'cyan', 'check_lock': 0}
-config = ConfigDict(default_config)
+config = default_config
