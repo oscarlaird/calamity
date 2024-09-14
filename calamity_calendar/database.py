@@ -134,7 +134,7 @@ def is_locked(engine):
     try:
         # Create the tables if they don't exist
         Base.metadata.create_all(engine)
-        # Try to set check_lock=1 as a test of whether we can acquire a write lock
+        # Try to set check_lock=1 as a test of whether we can acquire a write lock (dummy operation, has no meaning)
         with engine.connect() as connection:
             trans = connection.begin()
             connection.execute(sqlalchemy.text("UPDATE config SET value = '1' WHERE key = 'check_lock'"))
